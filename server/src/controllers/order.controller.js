@@ -1,0 +1,110 @@
+import { z } from 'zod';
+import { Order, ORDER_STATUS } from '../models/Order.js';
+import { ApiError } from '../utils/ApiError.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
+import { nextOrderNumber } from '../utils/sequence.js';
+import { notifyLevels } from '../services/notification.service.js';
+
+export const createOrderSchema = z.object({
+  salesOrder: z.string().optional(),
+  client: z.string(),
+  site: z.string().optional(),
+  grade: z.string(),
+  quantity: z.number().positive(),
+  negotiatedRate: z.number().nonnegative(),
+  deliveryDate: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
+const populateOrder = (q) =>
+  q
+    .populate('client', 'clientName creditStatus kycStatus')
+    .populate('site', 'siteName')
+    .populate('grade', 'gradeCode')
+    .populate('salesOrder', 'soNumber')
+    .populate('createdByLevel3', 'name')
+    .populate('approvedByLevel2', 'name')
+    .populate('saleAuthorizedByLevel2', 'name');
+
+export const listOrders = asyncHandler(async (req, res) => {
+  const { status, client, mine } = req.query;
+  const filter = {};
+  if (status) filter.status = status;
+  if (client) filter.client = client;
+  if (mine === 'true' && req.user.level === 3) filter.createdByLevel3 = req.user.id;
+  const orders = await populateOrder(Order.find(filter)).sort({ createdAt: -1 });
+  res.json({ orders });
+});
+
+export const getOrder = asyncHandler(async (req, res) => {
+  const order = await populateOrder(Order.findById(req.params.id));
+  if (!order) throw ApiError.notFound();
+  res.json({ order });
+});
+
+export const createOrder = asyncHandler(async (req, res) => {
+  const orderNumber = await nextOrderNumber();
+  const order = await Order.create({
+    ...req.body,
+    orderNumber,
+    status: ORDER_STATUS.PENDING,
+    createdByLevel3: req.user.id,
+  });
+
+  await notifyLevels([2], {
+    type: 'new_order',
+    message: `New order ${order.orderNumber} submitted for approval`,
+    relatedEntity: { kind: 'Order', id: order._id },
+  });
+
+  res.status(201).json({ order });
+});
+
+export const approveOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) throw ApiError.notFound();
+  if (order.status !== ORDER_STATUS.PENDING) {
+    throw ApiError.badRequest(`Cannot approve from status ${order.status}`);
+  }
+  order.status = ORDER_STATUS.APPROVED;
+  order.approvedByLevel2 = req.user.id;
+  order.approvedAt = new Date();
+  await order.save();
+
+  await notifyLevels([4], {
+    type: 'order_approved',
+    message: `Order ${order.orderNumber} approved — ready for dispatch`,
+    relatedEntity: { kind: 'Order', id: order._id },
+  });
+
+  res.json({ order });
+});
+
+export const authorizeSale = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) throw ApiError.notFound();
+  if (order.status !== ORDER_STATUS.DISPATCHED) {
+    throw ApiError.badRequest(
+      `Sale can only be authorised from DISPATCHED state. Current: ${order.status}`,
+    );
+  }
+  order.status = ORDER_STATUS.SALE_AUTHORIZED;
+  order.saleAuthorizedByLevel2 = req.user.id;
+  order.saleAuthorizedAt = new Date();
+  await order.save();
+
+  // IMPORTANT: Also update the associated dispatches that are awaiting auth
+  const { DispatchForm } = await import('../models/DispatchForm.js');
+  await DispatchForm.updateMany(
+    { order: order._id, status: 'dispatched' },
+    { $set: { status: 'sale_authorized' } }
+  );
+
+  await notifyLevels([4], {
+    type: 'sale_authorized',
+    message: `Sale authorised for ${order.orderNumber} — invoice can be generated`,
+    relatedEntity: { kind: 'Order', id: order._id },
+  });
+
+  res.json({ order });
+});
