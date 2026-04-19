@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { notifications as apiNotifications } from '../api/endpoints.js';
 import { useSocket } from '../hooks/useSocket.js';
 import { fmtDateTime } from '../utils/format.js';
@@ -7,6 +7,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
+  const dropdownRef = useRef(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -21,6 +22,24 @@ export function NotificationBell() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [open]);
 
   useSocket(
     useCallback(
@@ -47,7 +66,7 @@ export function NotificationBell() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"
