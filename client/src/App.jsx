@@ -6,6 +6,7 @@ import { useAuth } from './store/auth.js';
 import { installSyncListeners } from './offline/sync.js';
 
 import Login from './pages/auth/Login.jsx';
+import Register from './pages/auth/Register.jsx';
 import Forbidden from './pages/Forbidden.jsx';
 import NotFound from './pages/NotFound.jsx';
 
@@ -55,6 +56,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/forbidden" element={<Forbidden />} />
       <Route path="/" element={<HomeRedirect />} />
 

@@ -9,11 +9,13 @@ import { statusBadge } from '../../utils/format.js';
 export default function L1Clients() {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
-  const { data = [] } = useQuery({
-    queryKey: ['clients', q],
-    queryFn: () => clients.list({ q: q || undefined }),
+  const { data = { clients: [], totalPages: 1, page: 1 } } = useQuery({
+    queryKey: ['clients', q, page],
+    queryFn: () => clients.list({ q: q || undefined, page, limit: 6 }),
   });
+  const clientList = data.clients || [];
 
   const { register, handleSubmit, reset } = useForm();
   const create = useMutation({
@@ -100,7 +102,7 @@ export default function L1Clients() {
             </tr>
           </thead>
           <tbody>
-            {data.map((c) => (
+            {clientList.map((c) => (
               <tr key={c._id}>
                 <td>
                   <div className="font-medium">{c.clientName}</div>
@@ -119,13 +121,36 @@ export default function L1Clients() {
                 </td>
               </tr>
             ))}
-            {data.length === 0 && (
+            {clientList.length === 0 && (
               <tr>
                 <td colSpan="5" className="p-6 text-center text-sm text-slate-400">No clients yet</td>
               </tr>
             )}
           </tbody>
         </table>
+        
+        {/* Pagination UI */}
+        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6">
+          <div className="text-sm text-slate-500">
+            Page {data.page || 1} of {data.totalPages || 1}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="btn-secondary text-sm py-1 px-3"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(data.totalPages || 1, p + 1))}
+              disabled={page >= (data.totalPages || 1)}
+              className="btn-secondary text-sm py-1 px-3"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

@@ -15,16 +15,31 @@ export const paymentSchema = z.object({
 });
 
 export const listPayments = asyncHandler(async (req, res) => {
-  const { client } = req.query;
+  const { client, page, limit } = req.query;
   const filter = {};
   if (client) filter.client = client;
-  const payments = await Payment.find(filter)
+  
+  let query = Payment.find(filter)
     .populate('client', 'clientName')
     .populate('invoice', 'invoiceNumber amount')
     .populate('order', 'orderNumber')
     .populate('recordedByLevel2', 'name')
     .sort({ createdAt: -1 });
-  res.json({ payments });
+
+  const total = await Payment.countDocuments(filter);
+  let totalPages = 1;
+  let currentPage = 1;
+
+  if (page || limit) {
+    currentPage = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 6;
+    const skip = (currentPage - 1) * limitNum;
+    query = query.skip(skip).limit(limitNum);
+    totalPages = Math.ceil(total / limitNum);
+  }
+
+  const payments = await query;
+  res.json({ payments, total, page: currentPage, totalPages });
 });
 
 export const createPayment = asyncHandler(async (req, res) => {

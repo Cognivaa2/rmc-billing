@@ -68,10 +68,13 @@ export default function Login() {
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <div className="mt-5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+      <div className="mt-5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
           <div className="font-medium text-slate-600">Seeded logins</div>
           <div className="mt-1">admin@rmc.local · l2a@rmc.local · l3a@rmc.local · l4a@rmc.local</div>
           <div>Password for all: <span className="font-mono">ChangeMe@123</span></div>
+        </div>
+        <div className="mt-4 text-center text-sm text-slate-500">
+          First time setup? <a href="/register" className="text-brand-600 hover:text-brand-500">Register Admin here</a>
         </div>
       </div>
     </div>

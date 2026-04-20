@@ -65,6 +65,13 @@ export function NotificationBell() {
     setCount(0);
   };
 
+  const [selected, setSelected] = useState(null);
+
+  const handleSelect = (n) => {
+    setSelected(n);
+    if (!n.isRead) onRead(n._id);
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -96,17 +103,65 @@ export function NotificationBell() {
             {items.map((n) => (
               <button
                 key={n._id}
-                className={`w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50 ${
+                className={`w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
                   n.isRead ? 'opacity-60' : ''
                 }`}
-                onClick={() => !n.isRead && onRead(n._id)}
+                onClick={() => handleSelect(n)}
               >
-                <div className="text-sm font-medium">{n.message}</div>
-                <div className="text-xs text-slate-400">
-                  {n.type} · {fmtDateTime(n.sentAt)}
+                <div className="text-sm font-medium text-slate-800">{n.message}</div>
+                <div className="text-xs text-slate-400 mt-1">
+                  <span className="capitalize">{n.type.replace(/_/g, ' ')}</span> · {fmtDateTime(n.sentAt)}
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Notification Detail</h3>
+              <button 
+                onClick={() => setSelected(null)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                aria-label="Close modal"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Message</div>
+                <div className="text-base text-slate-800 bg-slate-50 p-4 rounded-xl border border-slate-100">{selected.message}</div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Type</div>
+                  <div className="text-sm font-medium text-brand-600 capitalize bg-brand-50 inline-flex px-2 py-1 rounded-md">
+                    {selected.type.replace(/_/g, ' ')}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Time</div>
+                  <div className="text-sm text-slate-700">{fmtDateTime(selected.sentAt)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button 
+                onClick={() => setSelected(null)}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

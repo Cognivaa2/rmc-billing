@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -10,13 +10,15 @@ export default function L2Clients() {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [kycFilter, setKycFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [showSiteFor, setShowSiteFor] = useState(null);
 
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['clients', q, kycFilter],
-    queryFn: () => clients.list({ q: q || undefined, kycStatus: kycFilter || undefined }),
+  const { data = { clients: [], totalPages: 1, page: 1 }, isLoading } = useQuery({
+    queryKey: ['clients', q, kycFilter, page],
+    queryFn: () => clients.list({ q: q || undefined, kycStatus: kycFilter || undefined, page, limit: 6 }),
   });
+  const clientList = data.clients || [];
 
   const { register: regClient, handleSubmit: handleClient, reset: resetClient } = useForm();
   const { register: regSite, handleSubmit: handleSite, reset: resetSite } = useForm();
@@ -127,8 +129,8 @@ export default function L2Clients() {
             </tr>
           </thead>
           <tbody>
-            {data.map((c) => (
-              <>
+            {clientList.map((c) => (
+              <React.Fragment key={c._id}>
                 <tr key={c._id}>
                   <td>
                     <div className="font-medium">{c.clientName}</div>
@@ -189,9 +191,9 @@ export default function L2Clients() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
-            {!isLoading && data.length === 0 && (
+            {!isLoading && clientList.length === 0 && (
               <tr>
                 <td colSpan="6" className="p-6 text-center text-sm text-slate-400">
                   No clients found
@@ -200,6 +202,29 @@ export default function L2Clients() {
             )}
           </tbody>
         </table>
+        
+        {/* Pagination UI */}
+        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6">
+          <div className="text-sm text-slate-500">
+            Page {data.page || 1} of {data.totalPages || 1}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="btn-secondary text-sm py-1 px-3"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(data.totalPages || 1, p + 1))}
+              disabled={page >= (data.totalPages || 1)}
+              className="btn-secondary text-sm py-1 px-3"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

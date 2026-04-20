@@ -26,17 +26,31 @@ export const kycSchema = z.object({
 });
 
 export const listClients = asyncHandler(async (req, res) => {
-  const { q, kycStatus, creditStatus } = req.query;
+  const { q, kycStatus, creditStatus, page, limit } = req.query;
   const filter = {};
   if (q) filter.clientName = new RegExp(q, 'i');
   if (kycStatus) filter.kycStatus = kycStatus;
   if (creditStatus) filter.creditStatus = creditStatus;
-  const clients = await Client.find(filter).sort({ createdAt: -1 });
-  res.json({ clients });
+
+  let query = Client.find(filter).sort({ createdAt: -1 });
+  let total = await Client.countDocuments(filter);
+  let totalPages = 1;
+  let currentPage = 1;
+
+  if (page || limit) {
+    currentPage = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 6;
+    const skip = (currentPage - 1) * limitNum;
+    query = query.skip(skip).limit(limitNum);
+    totalPages = Math.ceil(total / limitNum);
+  }
+
+  const clients = await query;
+  res.json({ clients, total, page: currentPage, totalPages });
 });
 
 export const getClient = asyncHandler(async (req, res) => {
-  const client = await Client.findById(req.params.id);
+  const client = await Client.findById(req.params.id).populate('kycData.verifiedBy', 'name');
   if (!client) throw ApiError.notFound('Client not found');
   res.json({ client });
 });
@@ -56,14 +70,16 @@ export const updateKyc = asyncHandler(async (req, res) => {
   const { kycStatus, remarks, documents, creditStatus } = req.body;
   const client = await Client.findById(req.params.id);
   if (!client) throw ApiError.notFound();
-  if (kycStatus) {
-    client.kycStatus = kycStatus;
-    client.kycData.verifiedBy = req.user.id;
-    client.kycData.verifiedAt = new Date();
-  }
+
+  if (kycStatus) client.kycStatus = kycStatus;
   if (remarks !== undefined) client.kycData.remarks = remarks;
   if (Array.isArray(documents)) client.kycData.documents = documents;
   if (creditStatus) client.creditStatus = creditStatus;
+
+  // Always log who made the last change to the KYC/Credit profile
+  client.kycData.verifiedBy = req.user.id;
+  client.kycData.verifiedAt = new Date();
+
   await client.save();
   await notifyLevels([2], {
     type: 'kyc_update',

@@ -4,23 +4,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { clients, payments, sites } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { statusBadge, fmtDateTime } from '../../utils/format.js';
+import { statusBadge, fmtDateTime, fmtMoney } from '../../utils/format.js';
 
 export default function L2ClientDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
   const [tab, setTab] = useState('kyc');
+  const [page, setPage] = useState(1);
 
   const { data: client, isLoading } = useQuery({
     queryKey: ['client', id],
     queryFn: () => clients.get(id),
   });
 
-  const { data: paymentList = [] } = useQuery({
-    queryKey: ['payments', id],
-    queryFn: () => payments.list({ client: id }),
+  const { data: paymentsData = { payments: [], totalPages: 1, page: 1 } } = useQuery({
+    queryKey: ['payments', id, page],
+    queryFn: () => payments.list({ client: id, page, limit: 6 }),
     enabled: tab === 'payments',
   });
+  const paymentList = paymentsData.payments || [];
 
   const { data: sitesList = [] } = useQuery({
     queryKey: ['sites', id],
@@ -52,6 +54,7 @@ export default function L2ClientDetail() {
     mutationFn: (d) =>
       payments.create({
         client: id,
+        amount: Number(d.amount),
         paymentReceived: d.paymentReceived === 'true' || d.paymentReceived === true,
         receivedAt: d.receivedAt || undefined,
         remarks: d.remarks || undefined,
@@ -194,6 +197,12 @@ export default function L2ClientDetail() {
                 {client.kycData.remarks}
               </div>
             )}
+            {client.kycData?.verifiedAt && (
+              <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400 bg-slate-50 flex justify-between items-center">
+                <span>Last updated by: <strong>{client.kycData.verifiedBy?.name || 'System'}</strong></span>
+                <span>{fmtDateTime(client.kycData.verifiedAt)}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -207,6 +216,10 @@ export default function L2ClientDetail() {
               className="grid grid-cols-1 gap-3 md:grid-cols-4"
               onSubmit={handlePay((d) => recordPayment.mutate(d))}
             >
+              <div>
+                <label className="label">Amount *</label>
+                <input type="number" step="0.01" className="input" required {...regPay('amount')} />
+              </div>
               <div>
                 <label className="label">Status *</label>
                 <select className="select" required {...regPay('paymentReceived')}>
@@ -238,6 +251,7 @@ export default function L2ClientDetail() {
             <table className="table-clean">
               <thead>
                 <tr>
+                  <th>Amount</th>
                   <th>Status</th>
                   <th>Received At</th>
                   <th>Recorded By</th>
@@ -247,6 +261,7 @@ export default function L2ClientDetail() {
               <tbody>
                 {paymentList.map((p) => (
                   <tr key={p._id}>
+                    <td className="font-semibold text-slate-800">{p.amount ? fmtMoney(p.amount) : '—'}</td>
                     <td>
                       {p.paymentReceived ? (
                         <span className="badge-green">Received</span>
@@ -263,13 +278,36 @@ export default function L2ClientDetail() {
                 ))}
                 {paymentList.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="p-6 text-center text-sm text-slate-400">
+                    <td colSpan="5" className="p-6 text-center text-sm text-slate-400">
                       No payment records yet
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+
+            {/* Pagination UI */}
+            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6">
+              <div className="text-sm text-slate-500">
+                Page {paymentsData.page || 1} of {paymentsData.totalPages || 1}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="btn-secondary text-sm py-1 px-3"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(paymentsData.totalPages || 1, p + 1))}
+                  disabled={page >= (paymentsData.totalPages || 1)}
+                  className="btn-secondary text-sm py-1 px-3"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

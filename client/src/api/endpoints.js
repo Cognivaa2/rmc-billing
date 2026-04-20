@@ -2,6 +2,7 @@ import { api } from './client.js';
 
 export const auth = {
   login: (email, password) => api.post('/auth/login', { email, password }).then((r) => r.data),
+  register: (name, email, password) => api.post('/auth/register', { name, email, password }).then((r) => r.data),
   logout: () => api.post('/auth/logout').then((r) => r.data),
   me: () => api.get('/auth/me').then((r) => r.data),
 };
@@ -13,7 +14,10 @@ export const users = {
 };
 
 export const clients = {
-  list: (params) => api.get('/clients', { params }).then((r) => r.data.clients),
+  list: (params) => api.get('/clients', { params }).then((r) => {
+    if (params && params.page !== undefined) return r.data;
+    return r.data.clients;
+  }),
   get: (id) => api.get(`/clients/${id}`).then((r) => r.data.client),
   create: (data) => api.post('/clients', data).then((r) => r.data.client),
   update: (id, data) => api.patch(`/clients/${id}`, data).then((r) => r.data.client),
@@ -73,7 +77,10 @@ export const batchsheets = {
 };
 
 export const payments = {
-  list: (params) => api.get('/payments', { params }).then((r) => r.data.payments),
+  list: (params) => api.get('/payments', { params }).then((r) => {
+    if (params && params.page !== undefined) return r.data;
+    return r.data.payments;
+  }),
   create: (data) => api.post('/payments', data).then((r) => r.data.payment),
   update: (id, data) => api.patch(`/payments/${id}`, data).then((r) => r.data.payment),
 };

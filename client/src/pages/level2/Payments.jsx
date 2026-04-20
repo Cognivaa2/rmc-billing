@@ -8,12 +8,14 @@ import { fmtDateTime, fmtMoney } from '../../utils/format.js';
 export default function L2Payments() {
   const qc = useQueryClient();
   const [clientFilter, setClientFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
 
-  const { data: paymentList = [], isLoading } = useQuery({
-    queryKey: ['payments', clientFilter],
-    queryFn: () => payments.list(clientFilter ? { client: clientFilter } : {}),
+  const { data: paymentsData = { payments: [], totalPages: 1, page: 1 }, isLoading } = useQuery({
+    queryKey: ['payments', clientFilter, page],
+    queryFn: () => payments.list(clientFilter ? { client: clientFilter, page, limit: 6 } : { page, limit: 6 }),
   });
+  const paymentList = paymentsData.payments || [];
 
   const { data: clientsList = [] } = useQuery({
     queryKey: ['clients'],

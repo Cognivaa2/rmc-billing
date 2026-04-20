@@ -12,6 +12,35 @@ export const loginSchema = z.object({
   password: z.string().min(6),
 });
 
+export const registerSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+export const register = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+  const existing = await User.findOne({ email: email.toLowerCase() });
+  if (existing) throw ApiError.badRequest('Email already in use');
+
+  const count = await User.countDocuments();
+  if (count > 0) {
+    throw ApiError.forbidden('Admin already registered. Please login.');
+  }
+
+  const hash = await bcrypt.hash(password, 12);
+  const user = await User.create({
+    name,
+    email: email.toLowerCase(),
+    passwordHash: hash,
+    level: 1, // First user is always L1 Admin
+    status: 'active',
+  });
+
+  setAuthCookies(res, signAccessToken(user), signRefreshToken(user));
+  res.json({ user: user.toPublic() });
+});
+
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email: email.toLowerCase() });
