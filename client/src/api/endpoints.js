@@ -45,7 +45,9 @@ export const orders = {
   list: (params) => api.get('/orders', { params }).then((r) => r.data.orders),
   get: (id) => api.get(`/orders/${id}`).then((r) => r.data.order),
   create: (data) => api.post('/orders', data).then((r) => r.data.order),
+  update: (id, data) => api.patch(`/orders/${id}`, data).then((r) => r.data.order),
   approve: (id) => api.patch(`/orders/${id}/approve`).then((r) => r.data.order),
+  reject: (id, reason) => api.patch(`/orders/${id}/reject`, { reason }).then((r) => r.data.order),
   authorizeSale: (id) => api.patch(`/orders/${id}/authorize-sale`).then((r) => r.data.order),
 };
 

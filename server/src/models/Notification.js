@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 export const NOTIFICATION_TYPES = Object.freeze([
   'new_order',
   'order_approved',
+  'order_rejected',
   'dispatch_ready',
   'sale_authorized',
   'invoice_generated',

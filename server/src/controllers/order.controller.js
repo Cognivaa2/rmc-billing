@@ -6,13 +6,12 @@ import { nextOrderNumber } from '../utils/sequence.js';
 import { notifyLevels } from '../services/notification.service.js';
 
 export const createOrderSchema = z.object({
-  salesOrder: z.string().optional(),
-  client: z.string(),
-  site: z.string().optional(),
-  grade: z.string(),
-  quantity: z.number().positive(),
-  negotiatedRate: z.number().nonnegative(),
-  deliveryDate: z.string().optional(),
+  client: z.string().min(1, 'Client is required'),
+  site: z.string().optional().or(z.literal('')),
+  grade: z.string().min(1, 'Grade is required'),
+  quantity: z.coerce.number().positive('Quantity must be positive'),
+  negotiatedRate: z.coerce.number().nonnegative('Rate must be 0 or more'),
+  deliveryDate: z.string().optional().or(z.literal('')),
   remarks: z.string().optional(),
 });
 
@@ -20,8 +19,6 @@ const populateOrder = (q) =>
   q
     .populate('client', 'clientName creditStatus kycStatus')
     .populate('site', 'siteName')
-    .populate('grade', 'gradeCode')
-    .populate('salesOrder', 'soNumber')
     .populate('createdByLevel3', 'name')
     .populate('approvedByLevel2', 'name')
     .populate('saleAuthorizedByLevel2', 'name');
@@ -80,6 +77,28 @@ export const approveOrder = asyncHandler(async (req, res) => {
   res.json({ order });
 });
 
+export const rejectOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) throw ApiError.notFound();
+  if (order.status !== ORDER_STATUS.PENDING) {
+    throw ApiError.badRequest(`Cannot reject from status ${order.status}`);
+  }
+  order.status = 'REJECTED';
+  order.rejectedByLevel2 = req.user.id;
+  order.rejectedAt = new Date();
+  order.rejectionReason = req.body.reason || 'No reason provided';
+  await order.save();
+
+  // Non-fatal — notification failure must not roll back the rejection
+  notifyLevels([3], {
+    type: 'order_rejected',
+    message: `Order ${order.orderNumber} was rejected: ${order.rejectionReason}`,
+    relatedEntity: { kind: 'Order', id: order._id },
+  }).catch((e) => console.warn('Notify failed (rejectOrder):', e.message));
+
+  res.json({ order });
+});
+
 export const authorizeSale = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) throw ApiError.notFound();
@@ -108,3 +127,36 @@ export const authorizeSale = asyncHandler(async (req, res) => {
 
   res.json({ order });
 });
+
+export const updateOrderSchema = z.object({
+  site: z.string().optional().or(z.literal('')),
+  grade: z.string().min(1, 'Grade is required'),
+  quantity: z.coerce.number().positive('Quantity must be positive'),
+  negotiatedRate: z.coerce.number().nonnegative('Rate must be 0 or more'),
+  deliveryDate: z.string().optional().or(z.literal('')),
+  remarks: z.string().optional(),
+});
+
+export const updateOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) throw ApiError.notFound();
+  if (order.status !== ORDER_STATUS.PENDING) {
+    throw ApiError.badRequest('Only PENDING orders can be edited');
+  }
+  if (String(order.createdByLevel3) !== String(req.user.id)) {
+    throw ApiError.forbidden('You can only edit your own orders');
+  }
+
+  const { site, grade, quantity, negotiatedRate, deliveryDate, remarks } = req.body;
+  if (site !== undefined) order.site = site || undefined;
+  if (grade) order.grade = grade;
+  if (quantity) order.quantity = quantity;
+  if (negotiatedRate !== undefined) order.negotiatedRate = negotiatedRate;
+  if (deliveryDate !== undefined) order.deliveryDate = deliveryDate || undefined;
+  if (remarks !== undefined) order.remarks = remarks;
+
+  await order.save();
+  const updated = await populateOrder(Order.findById(order._id));
+  res.json({ order: updated });
+});
+

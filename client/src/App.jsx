@@ -29,6 +29,7 @@ import L2Dispatches from './pages/level2/Dispatches.jsx';
 import L3Dashboard from './pages/level3/Dashboard.jsx';
 import L3NewOrder from './pages/level3/NewOrder.jsx';
 import L3MyOrders from './pages/level3/MyOrders.jsx';
+import L3EditOrder from './pages/level3/EditOrder.jsx';
 
 import L4Dashboard from './pages/level4/Dashboard.jsx';
 import L4ApprovedOrders from './pages/level4/ApprovedOrders.jsx';
@@ -83,6 +84,7 @@ export default function App() {
       <Route element={<RequireAuth levels={[3]}><Layout /></RequireAuth>}>
         <Route path="/l3" element={<L3Dashboard />} />
         <Route path="/l3/orders/new" element={<L3NewOrder />} />
+        <Route path="/l3/orders/:id/edit" element={<L3EditOrder />} />
         <Route path="/l3/orders" element={<L3MyOrders />} />
       </Route>
 
