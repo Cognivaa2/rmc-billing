@@ -12,3 +12,4 @@ coverage/
 .idea/
 server/uploads/
 client/dev-dist/
+Dockerfile
