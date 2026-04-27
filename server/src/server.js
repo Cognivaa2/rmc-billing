@@ -74,7 +74,14 @@ app.use(errorHandler);
 initSocket(httpServer);
 
 async function start() {
-  await connectDb();
+  logger.info('Starting server...');
+  try {
+    await connectDb();
+  } catch (err) {
+    logger.error('Failed to connect to database:', err.message);
+    throw err;
+  }
+  
   httpServer.listen(env.port, () => {
     logger.info(`RMC Billing API listening on :${env.port}`);
   });
