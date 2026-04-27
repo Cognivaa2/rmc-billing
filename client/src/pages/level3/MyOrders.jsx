@@ -6,31 +6,31 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime, fmtMoney } from '../../utils/format.js';
 
 const FILTERS = [
-  { key: 'ALL',             label: 'All' },
-  { key: 'PENDING',         label: 'Pending' },
-  { key: 'APPROVED',        label: 'Approved' },
-  { key: 'REJECTED',        label: 'Rejected' },
-  { key: 'DISPATCHED',      label: 'Dispatched' },
+  { key: 'ALL', label: 'All' },
+  { key: 'PENDING', label: 'Pending' },
+  { key: 'APPROVED', label: 'Approved' },
+  { key: 'REJECTED', label: 'Rejected' },
+  { key: 'DISPATCHED', label: 'Dispatched' },
   { key: 'SALE_AUTHORIZED', label: 'Sale Auth.' },
-  { key: 'INVOICED',        label: 'Invoiced' },
+  { key: 'INVOICED', label: 'Invoiced' },
 ];
 
 const STATUS_BADGE = {
-  PENDING:         'bg-amber-50 text-amber-700 border border-amber-200',
-  APPROVED:        'bg-blue-50 text-blue-700 border border-blue-200',
-  REJECTED:        'bg-red-50 text-red-700 border border-red-200',
-  DISPATCHED:      'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  APPROVED: 'bg-blue-50 text-blue-700 border border-blue-200',
+  REJECTED: 'bg-red-50 text-red-700 border border-red-200',
+  DISPATCHED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   SALE_AUTHORIZED: 'bg-violet-50 text-violet-700 border border-violet-200',
-  INVOICED:        'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  INVOICED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
 };
 
 const STATUS_DESC = {
-  PENDING:         'Waiting for Manager approval',
-  APPROVED:        'Manager approved — ready for dispatch',
-  REJECTED:        'Order rejected by Manager',
-  DISPATCHED:      'Plant has filled dispatch form',
+  PENDING: 'Waiting for Manager approval',
+  APPROVED: 'Manager approved — ready for dispatch',
+  REJECTED: 'Order rejected by Manager',
+  DISPATCHED: 'Plant has filled dispatch form',
   SALE_AUTHORIZED: 'Manager authorized sale',
-  INVOICED:        'Invoice generated',
+  INVOICED: 'Invoice generated',
 };
 
 const PIPELINE_STEPS = ['PENDING', 'APPROVED', 'DISPATCHED', 'SALE_AUTHORIZED', 'INVOICED'];
@@ -43,13 +43,12 @@ function PipelineBar({ status }) {
         <div key={s} className="flex items-center flex-1">
           <div
             title={s}
-            className={`h-2 rounded-full flex-1 transition-all ${
-              i < idx
-                ? 'bg-emerald-400'
-                : i === idx
+            className={`h-2 rounded-full flex-1 transition-all ${i < idx
+              ? 'bg-emerald-400'
+              : i === idx
                 ? 'bg-brand-600'
                 : 'bg-slate-200'
-            }`}
+              }`}
           />
           {i < PIPELINE_STEPS.length - 1 && <div className="w-1" />}
         </div>
@@ -87,18 +86,16 @@ export default function L3MyOrders() {
           <button
             key={f.key}
             onClick={() => setActiveFilter(f.key)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
-              activeFilter === f.key
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${activeFilter === f.key
+              ? 'bg-brand-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
           >
             {f.label}
             {counts[f.key] > 0 && (
               <span
-                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  activeFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                }`}
+                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${activeFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}
               >
                 {counts[f.key]}
               </span>
@@ -121,9 +118,8 @@ export default function L3MyOrders() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-800">{o.orderNumber}</span>
                   <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      STATUS_BADGE[o.status] || 'bg-slate-100 text-slate-600'
-                    }`}
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[o.status] || 'bg-slate-100 text-slate-600'
+                      }`}
                   >
                     {FILTERS.find((f) => f.key === o.status)?.label || o.status}
                   </span>
