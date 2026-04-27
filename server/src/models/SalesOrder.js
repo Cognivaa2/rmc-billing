@@ -15,6 +15,8 @@ const salesOrderSchema = new mongoose.Schema(
     closedByLevel2: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     closedAt: Date,
     notes: String,
+    sourceOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+    numberOfVehicles: { type: Number, min: 1 },
   },
   { timestamps: true },
 );

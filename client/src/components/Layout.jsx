@@ -23,11 +23,11 @@ const NAV_BY_LEVEL = {
   ],
   3: [
     { to: '/l3', label: 'Dashboard', icon: 'grid' },
-    { to: '/l3/orders/new', label: 'New Order', icon: 'plus' },
     { to: '/l3/orders', label: 'My Orders', icon: 'star' },
   ],
   4: [
     { to: '/l4', label: 'Dashboard', icon: 'grid' },
+    { to: '/l4/sales-orders', label: 'Sales Orders', icon: 'deal' },
     { to: '/l4/approved-orders', label: 'Approved Orders', icon: 'check' },
     { to: '/l4/dispatches', label: 'Dispatches', icon: 'truck' },
     { to: '/l4/invoices', label: 'Invoices', icon: 'receipt' },

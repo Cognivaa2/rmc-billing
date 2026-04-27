@@ -7,75 +7,125 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { nextDispatchNumber } from '../utils/sequence.js';
 import { notifyLevels } from '../services/notification.service.js';
 
+// ── Schemas ──────────────────────────────────────────────────────────────────
+
 export const createDispatchSchema = z.object({
-  order: z.string(),
+  order: z.string().optional(),
+  salesOrder: z.string().optional(),
   quantity: z.number().positive(),
   vehicleNumber: z.string().min(3),
+  mixDetails: z.string().optional(),
+  driverName: z.string().optional(),
   dispatchDateTime: z.string().optional(),
+}).refine((d) => d.order || d.salesOrder, {
+  message: 'Either order or salesOrder is required',
 });
 
+// ── Populate helper ───────────────────────────────────────────────────────────
+
+const populateDispatch = (q) =>
+  q
+    .populate('client', 'clientName officeAddress contactNumber email taxInformation')
+    .populate('site', 'siteName')
+    .populate('grade', 'gradeCode description')
+    .populate('order', 'orderNumber status negotiatedRate')
+    .populate('salesOrder', 'soNumber status totalQuantity remainingQuantity')
+    .populate('filledByLevel4', 'name');
+
+// ── Controllers ───────────────────────────────────────────────────────────────
+
 export const listDispatches = asyncHandler(async (req, res) => {
-  const { status, client, from, to } = req.query;
+  const { status, client, from, to, salesOrder } = req.query;
   const filter = {};
   if (status) filter.status = status;
   if (client) filter.client = client;
+  if (salesOrder) filter.salesOrder = salesOrder;
   if (from || to) {
     filter.dispatchDateTime = {};
     if (from) filter.dispatchDateTime.$gte = new Date(from);
     if (to) filter.dispatchDateTime.$lte = new Date(to);
   }
-  const dispatches = await DispatchForm.find(filter)
-    .populate('client', 'clientName officeAddress contactNumber email taxInformation')
-    .populate('site', 'siteName')
-    .populate('grade', 'gradeCode description')
-    .populate('order', 'orderNumber status negotiatedRate')
-    .populate('filledByLevel4', 'name')
-    .sort({ createdAt: -1 });
+  const dispatches = await populateDispatch(DispatchForm.find(filter)).sort({ createdAt: -1 });
   res.json({ dispatches });
 });
 
 export const getDispatch = asyncHandler(async (req, res) => {
-  const dispatch = await DispatchForm.findById(req.params.id)
-    .populate('client')
-    .populate('site')
-    .populate('grade')
-    .populate('order')
-    .populate('filledByLevel4', 'name');
+  const dispatch = await populateDispatch(DispatchForm.findById(req.params.id));
   if (!dispatch) throw ApiError.notFound();
   res.json({ dispatch });
 });
 
+/**
+ * POST /dispatches
+ * L4 fills a dispatch form.
+ * Supports two modes:
+ *   1. salesOrder-based (new flow): body has salesOrder ID
+ *   2. order-based (legacy flow):   body has order ID
+ */
 export const createDispatch = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.body.order);
-  if (!order) throw ApiError.notFound('Order not found');
-  if (order.status !== ORDER_STATUS.APPROVED) {
-    throw ApiError.badRequest(`Dispatch requires APPROVED order. Current: ${order.status}`);
+  const { salesOrder: soId, order: orderId, quantity, vehicleNumber, mixDetails, driverName, dispatchDateTime } = req.body;
+
+  let client, site, gradeId, linkedOrderId, linkedSoId;
+
+  // ── Mode 1: SO-based dispatch ─────────────────────────────────────────────
+  if (soId) {
+    const so = await SalesOrder.findById(soId).populate('grade', '_id gradeCode');
+    if (!so) throw ApiError.notFound('Sales Order not found');
+    if (so.status === 'closed') throw ApiError.badRequest('Sales Order is already closed');
+    if (so.remainingQuantity <= 0) throw ApiError.badRequest('No remaining quantity on this Sales Order');
+    if (quantity > so.remainingQuantity) {
+      throw ApiError.badRequest(
+        `Quantity (${quantity}) exceeds remaining (${so.remainingQuantity} m³)`,
+      );
+    }
+
+    client = so.client;
+    site = so.site;
+    gradeId = so.grade?._id || so.grade;
+    linkedSoId = so._id;
+
+    // Update SO quantities
+    so.dispatchedQuantity += quantity;
+    so.remainingQuantity = Math.max(0, so.totalQuantity - so.dispatchedQuantity);
+    await so.save();
+
+  // ── Mode 2: Order-based dispatch (legacy) ─────────────────────────────────
+  } else {
+    const order = await Order.findById(orderId);
+    if (!order) throw ApiError.notFound('Order not found');
+    if (order.status !== ORDER_STATUS.APPROVED) {
+      throw ApiError.badRequest(`Dispatch requires APPROVED order. Current: ${order.status}`);
+    }
+
+    // Resolve grade: Order.grade is a gradeCode string
+    const { ConcreteGrade } = await import('../models/ConcreteGrade.js');
+    const gradeDoc = await ConcreteGrade.findOne({ gradeCode: order.grade.toUpperCase().trim() });
+    if (!gradeDoc) throw ApiError.badRequest(`Grade "${order.grade}" not found in grade master`);
+
+    client = order.client;
+    site = order.site;
+    gradeId = gradeDoc._id;
+    linkedOrderId = order._id;
+
+    order.status = ORDER_STATUS.DISPATCHED;
+    await order.save();
   }
 
   const dispatchNumber = await nextDispatchNumber();
   const dispatch = await DispatchForm.create({
     dispatchNumber,
-    order: order._id,
-    client: order.client,
-    site: order.site,
-    grade: order.grade,
-    quantity: req.body.quantity,
-    vehicleNumber: req.body.vehicleNumber,
-    dispatchDateTime: req.body.dispatchDateTime || new Date(),
+    salesOrder: linkedSoId,
+    order: linkedOrderId,
+    client,
+    site,
+    grade: gradeId,
+    quantity,
+    vehicleNumber: vehicleNumber.toUpperCase(),
+    mixDetails,
+    driverName,
+    dispatchDateTime: dispatchDateTime || new Date(),
     filledByLevel4: req.user.id,
   });
-
-  order.status = ORDER_STATUS.DISPATCHED;
-  await order.save();
-
-  if (order.salesOrder) {
-    const so = await SalesOrder.findById(order.salesOrder);
-    if (so) {
-      so.dispatchedQuantity += req.body.quantity;
-      so.remainingQuantity = Math.max(0, so.totalQuantity - so.dispatchedQuantity);
-      await so.save();
-    }
-  }
 
   await notifyLevels([2], {
     type: 'dispatch_ready',
@@ -83,5 +133,6 @@ export const createDispatch = asyncHandler(async (req, res) => {
     relatedEntity: { kind: 'DispatchForm', id: dispatch._id },
   });
 
-  res.status(201).json({ dispatch });
+  const populated = await populateDispatch(DispatchForm.findById(dispatch._id));
+  res.status(201).json({ dispatch: populated });
 });

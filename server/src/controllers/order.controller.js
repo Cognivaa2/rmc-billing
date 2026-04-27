@@ -24,13 +24,27 @@ const populateOrder = (q) =>
     .populate('saleAuthorizedByLevel2', 'name');
 
 export const listOrders = asyncHandler(async (req, res) => {
-  const { status, client, mine } = req.query;
+  const { status, client, mine, page, limit } = req.query;
   const filter = {};
   if (status) filter.status = status;
   if (client) filter.client = client;
   if (mine === 'true' && req.user.level === 3) filter.createdByLevel3 = req.user.id;
-  const orders = await populateOrder(Order.find(filter)).sort({ createdAt: -1 });
-  res.json({ orders });
+
+  let query = Order.find(filter).sort({ createdAt: -1 });
+  let total = await Order.countDocuments(filter);
+  let totalPages = 1;
+  let currentPage = 1;
+
+  if (page || limit) {
+    currentPage = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (currentPage - 1) * limitNum;
+    query = query.skip(skip).limit(limitNum);
+    totalPages = Math.ceil(total / limitNum);
+  }
+
+  const orders = await populateOrder(query);
+  res.json({ orders, total, page: currentPage, totalPages });
 });
 
 export const getOrder = asyncHandler(async (req, res) => {
@@ -76,6 +90,8 @@ export const approveOrder = asyncHandler(async (req, res) => {
 
   res.json({ order });
 });
+
+
 
 export const rejectOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);

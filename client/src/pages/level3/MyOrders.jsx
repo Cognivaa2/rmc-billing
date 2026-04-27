@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { orders } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime, fmtMoney } from '../../utils/format.js';
@@ -10,9 +10,6 @@ const FILTERS = [
   { key: 'PENDING', label: 'Pending' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'REJECTED', label: 'Rejected' },
-  { key: 'DISPATCHED', label: 'Dispatched' },
-  { key: 'SALE_AUTHORIZED', label: 'Sale Auth.' },
-  { key: 'INVOICED', label: 'Invoiced' },
 ];
 
 const STATUS_BADGE = {
@@ -58,19 +55,37 @@ function PipelineBar({ status }) {
 }
 
 export default function L3MyOrders() {
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const location = useLocation();
+  const [activeFilter, setActiveFilter] = useState(location.state?.filter || 'ALL');
+  const [page, setPage] = useState(1);
 
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['orders', 'mine', activeFilter],
-    queryFn: () =>
-      orders.list({ mine: 'true', ...(activeFilter !== 'ALL' && { status: activeFilter }) }),
+  // For counts
+  const { data: allData = [] } = useQuery({
+    queryKey: ['orders', 'mine', 'ALL'],
+    queryFn: () => orders.list({ mine: 'true' }),
   });
 
-  const counts = data.reduce((acc, o) => {
+  const counts = allData.reduce((acc, o) => {
     acc.ALL = (acc.ALL || 0) + 1;
     acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
   }, { ALL: 0 });
+
+  // Paginated list
+  const { data, isLoading } = useQuery({
+    queryKey: ['orders', 'mine', activeFilter, page],
+    queryFn: () =>
+      orders.listPaginated({
+        mine: 'true',
+        page,
+        limit: 10,
+        ...(activeFilter !== 'ALL' && { status: activeFilter }),
+      }),
+    keepPreviousData: true,
+  });
+
+  const ordersList = data?.orders || [];
+  const totalPages = data?.totalPages || 1;
 
   return (
     <>
@@ -85,7 +100,7 @@ export default function L3MyOrders() {
         {FILTERS.map((f) => (
           <button
             key={f.key}
-            onClick={() => setActiveFilter(f.key)}
+            onClick={() => { setActiveFilter(f.key); setPage(1); }}
             className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${activeFilter === f.key
               ? 'bg-brand-600 text-white shadow-sm'
               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -110,7 +125,7 @@ export default function L3MyOrders() {
           <div className="card card-body text-center text-sm text-slate-400">Loading…</div>
         )}
 
-        {data.map((o) => (
+        {ordersList.map((o) => (
           <div key={o._id} className="card card-body">
             <div className="flex flex-wrap items-start justify-between gap-3">
               {/* Left: order info */}
@@ -181,7 +196,7 @@ export default function L3MyOrders() {
           </div>
         ))}
 
-        {!isLoading && data.length === 0 && (
+        {!isLoading && ordersList.length === 0 && (
           <div className="card card-body text-center text-slate-400 py-10">
             <div className="text-3xl mb-3">📋</div>
             <div className="text-sm font-medium">
@@ -194,6 +209,43 @@ export default function L3MyOrders() {
                 + Submit First Order
               </Link>
             )}
+          </div>
+        )}
+
+        {/* Pagination controls */}
+        {totalPages > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-xl shadow-sm">
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-slate-700">
+                  Showing page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
+                </p>
+              </div>
+              <div>
+                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            </div>
           </div>
         )}
       </div>

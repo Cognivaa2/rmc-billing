@@ -39,10 +39,13 @@ export const salesOrders = {
   get: (id) => api.get(`/sales-orders/${id}`).then((r) => r.data.salesOrder),
   create: (data) => api.post('/sales-orders', data).then((r) => r.data.salesOrder),
   close: (id) => api.patch(`/sales-orders/${id}/close`).then((r) => r.data.salesOrder),
+  createFromOrder: (orderId, numberOfVehicles, quantity) =>
+    api.post(`/sales-orders/from-order/${orderId}`, { numberOfVehicles, quantity }).then((r) => r.data.salesOrder),
 };
 
 export const orders = {
   list: (params) => api.get('/orders', { params }).then((r) => r.data.orders),
+  listPaginated: (params) => api.get('/orders', { params }).then((r) => r.data),
   get: (id) => api.get(`/orders/${id}`).then((r) => r.data.order),
   create: (data) => api.post('/orders', data).then((r) => r.data.order),
   update: (id, data) => api.patch(`/orders/${id}`, data).then((r) => r.data.order),
@@ -55,6 +58,8 @@ export const dispatches = {
   list: (params) => api.get('/dispatches', { params }).then((r) => r.data.dispatches),
   get: (id) => api.get(`/dispatches/${id}`).then((r) => r.data.dispatch),
   create: (data) => api.post('/dispatches', data).then((r) => r.data.dispatch),
+  createFromSalesOrder: (soId, data) =>
+    api.post('/dispatches', { salesOrder: soId, ...data }).then((r) => r.data.dispatch),
 };
 
 export const invoices = {
