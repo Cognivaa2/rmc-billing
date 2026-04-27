@@ -35,10 +35,19 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin: (origin, cb) => {
-    // Accept standard origin, or any localhost/local-network origin in development
-    if (!origin || origin === env.clientOrigin || env.nodeEnv !== 'production') {
-      cb(null, origin || true);
+    // Allow if no origin (e.g. server-to-server or tools like Postman)
+    if (!origin) return cb(null, true);
+
+    const allowedOrigins = env.clientOrigin.split(',').map(o => o.trim().replace(/\/$/, ''));
+    
+    if (
+      env.clientOrigin === '*' || 
+      allowedOrigins.includes(origin.replace(/\/$/, '')) || 
+      env.nodeEnv !== 'production'
+    ) {
+      cb(null, true);
     } else {
+      logger.error(`CORS blocked for origin: ${origin}. Allowed: ${env.clientOrigin}`);
       cb(new Error('Not allowed by CORS'));
     }
   },
