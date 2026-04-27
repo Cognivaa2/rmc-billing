@@ -168,7 +168,7 @@ export default function L2ClientDetail() {
           </div>
 
           {/* KYC documents */}
-          <div className="card">
+          {/* <div className="card">
             <div className="border-b border-slate-100 px-5 py-4 font-semibold">
               Documents ({client.kycData?.documents?.length || 0})
             </div>
@@ -203,7 +203,7 @@ export default function L2ClientDetail() {
                 <span>{fmtDateTime(client.kycData.verifiedAt)}</span>
               </div>
             )}
-          </div>
+          </div> */}
         </div>
       )}
 

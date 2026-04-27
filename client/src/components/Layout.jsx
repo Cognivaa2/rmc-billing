@@ -16,7 +16,7 @@ const NAV_BY_LEVEL = {
   2: [
     { to: '/l2', label: 'Dashboard', icon: 'grid' },
     { to: '/l2/clients', label: 'Clients', icon: 'users' },
-    { to: '/l2/payments', label: 'Payments', icon: 'coin' },
+    // { to: '/l2/payments', label: 'Payments', icon: 'coin' },
     { to: '/l2/orders', label: 'Orders', icon: 'star' },
     { to: '/l2/sales-orders', label: 'Sales Orders', icon: 'deal' },
     { to: '/l2/dispatches', label: 'Dispatches', icon: 'truck' },
