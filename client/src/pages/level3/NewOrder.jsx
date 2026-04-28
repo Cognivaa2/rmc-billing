@@ -4,10 +4,7 @@ import { useForm } from 'react-hook-form';
 import { orders, clients, sites } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 
-const GRADES = [
-  'M5', 'M7.5', 'M10', 'M15', 'M20', 'M25',
-  'M30', 'M35', 'M40', 'M45', 'M50', 'M55', 'M60',
-];
+const GRADES = ['M10', 'M15', 'M20', 'M25', 'M30', 'M35', 'M40', 'M45', 'M50'];
 
 export default function L3NewOrder() {
   const nav = useNavigate();

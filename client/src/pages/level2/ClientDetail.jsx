@@ -3,14 +3,16 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { clients, payments, sites } from '../../api/endpoints.js';
-import { PageHeader } from '../../components/PageHeader.jsx';
 import { statusBadge, fmtDateTime, fmtMoney } from '../../utils/format.js';
+
 
 export default function L2ClientDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
   const [tab, setTab] = useState('kyc');
   const [page, setPage] = useState(1);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   const { data: client, isLoading } = useQuery({
     queryKey: ['client', id],
@@ -35,6 +37,7 @@ export default function L2ClientDetail() {
     defaultValues: { paymentReceived: true },
   });
   const { register: regSite, handleSubmit: handleSite, reset: resetSite } = useForm();
+  const { register: regProfile, handleSubmit: handleProfile, reset: resetProfile } = useForm();
 
   const updateKyc = useMutation({
     mutationFn: (d) =>
@@ -50,6 +53,25 @@ export default function L2ClientDetail() {
     },
   });
 
+  const updateProfile = useMutation({
+    mutationFn: (d) =>
+      clients.update(id, {
+        clientName: d.clientName,
+        officeAddress: d.officeAddress,
+        contactNumber: d.contactNumber,
+        email: d.email,
+        taxInformation: {
+          gstin: d.gstin,
+          pan: d.pan,
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['client', id] });
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      setIsEditingProfile(false);
+    },
+  });
+
   const recordPayment = useMutation({
     mutationFn: (d) =>
       payments.create({
@@ -61,6 +83,21 @@ export default function L2ClientDetail() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payments', id] });
+      resetPay({ paymentReceived: true });
+    },
+  });
+
+  const updatePayment = useMutation({
+    mutationFn: (d) =>
+      payments.update(editingPayment._id, {
+        amount: Number(d.amount),
+        paymentReceived: d.paymentReceived === 'true' || d.paymentReceived === true,
+        receivedAt: d.receivedAt || undefined,
+        remarks: d.remarks || undefined,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments', id] });
+      setEditingPayment(null);
       resetPay({ paymentReceived: true });
     },
   });
@@ -80,11 +117,82 @@ export default function L2ClientDetail() {
 
   return (
     <>
-      <PageHeader
-        title={client.clientName}
-        subtitle={client.officeAddress}
-        actions={<Link to="/l2/clients" className="btn-secondary">← Back</Link>}
-      />
+      {/* Page header — Back above title on the left */}
+      <div className="mb-6">
+        <Link
+          to="/l2/clients"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-brand-600 transition mb-2"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+          Back
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">{client.clientName}</h1>
+            {client.officeAddress && (
+              <p className="mt-1 text-sm text-slate-500">{client.officeAddress}</p>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setIsEditingProfile(!isEditingProfile);
+              resetProfile({
+                clientName: client.clientName,
+                officeAddress: client.officeAddress,
+                contactNumber: client.contactNumber,
+                email: client.email,
+                gstin: client.taxInformation?.gstin || '',
+                pan: client.taxInformation?.pan || '',
+              });
+            }}
+            className="btn-secondary text-xs"
+          >
+            {isEditingProfile ? 'Cancel' : 'Edit Profile'}
+          </button>
+        </div>
+      </div>
+
+
+      {isEditingProfile && (
+        <div className="card card-body mb-5">
+          <div className="mb-4 font-semibold text-slate-700">Edit Client Profile</div>
+          <form className="grid grid-cols-1 gap-3 md:grid-cols-3" onSubmit={handleProfile((d) => updateProfile.mutate(d))}>
+            <div>
+              <label className="label">Client Name *</label>
+              <input className="input" required {...regProfile('clientName')} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="label">Office Address *</label>
+              <input className="input" required {...regProfile('officeAddress')} />
+            </div>
+            <div>
+              <label className="label">Contact Number *</label>
+              <input className="input" required {...regProfile('contactNumber')} />
+            </div>
+            <div>
+              <label className="label">Email</label>
+              <input className="input" type="email" {...regProfile('email')} />
+            </div>
+            <div>
+              <label className="label">GSTIN</label>
+              <input className="input" {...regProfile('gstin')} />
+            </div>
+            <div>
+              <label className="label">PAN</label>
+              <input className="input" {...regProfile('pan')} />
+            </div>
+            <div className="md:col-span-3 flex justify-end gap-3">
+              <button type="button" onClick={() => setIsEditingProfile(false)} className="btn-secondary">Cancel</button>
+              <button className="btn-primary" disabled={updateProfile.isPending}>
+                {updateProfile.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
 
       {/* Client info strip */}
       <div className="card card-body mb-5 grid grid-cols-2 gap-4 md:grid-cols-4 text-sm">
@@ -113,11 +221,10 @@ export default function L2ClientDetail() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition ${
-              tab === t
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200'
-            }`}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition ${tab === t
+              ? 'bg-brand-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200'
+              }`}
           >
             {t}
           </button>
@@ -211,10 +318,31 @@ export default function L2ClientDetail() {
       {tab === 'payments' && (
         <div className="space-y-5">
           <div className="card card-body">
-            <div className="mb-4 font-semibold text-slate-700">Record Payment</div>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="font-semibold text-slate-700">
+                {editingPayment ? 'Edit Payment' : 'Record Payment'}
+              </div>
+              {editingPayment && (
+                <button
+                  onClick={() => {
+                    setEditingPayment(null);
+                    resetPay({ paymentReceived: true });
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-4"
-              onSubmit={handlePay((d) => recordPayment.mutate(d))}
+              onSubmit={handlePay((d) => {
+                if (editingPayment) {
+                  updatePayment.mutate(d);
+                } else {
+                  recordPayment.mutate(d);
+                }
+              })}
             >
               <div>
                 <label className="label">Amount *</label>
@@ -236,11 +364,11 @@ export default function L2ClientDetail() {
                 <input className="input" {...regPay('remarks')} />
               </div>
               <div className="md:col-span-4 flex justify-end gap-3">
-                {recordPayment.isSuccess && (
-                  <span className="text-sm text-emerald-600">Recorded ✓</span>
+                {(recordPayment.isSuccess || updatePayment.isSuccess) && (
+                  <span className="text-sm text-emerald-600">Saved ✓</span>
                 )}
-                <button className="btn-primary" disabled={recordPayment.isPending}>
-                  {recordPayment.isPending ? 'Saving…' : 'Record Payment'}
+                <button className="btn-primary" disabled={recordPayment.isPending || updatePayment.isPending}>
+                  {recordPayment.isPending || updatePayment.isPending ? 'Saving…' : editingPayment ? 'Update Payment' : 'Record Payment'}
                 </button>
               </div>
             </form>
@@ -256,6 +384,7 @@ export default function L2ClientDetail() {
                   <th>Received At</th>
                   <th>Recorded By</th>
                   <th>Remarks</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,11 +403,27 @@ export default function L2ClientDetail() {
                     </td>
                     <td>{p.recordedByLevel2?.name || '—'}</td>
                     <td className="text-slate-500">{p.remarks || '—'}</td>
+                    <td className="text-right">
+                      <button
+                        onClick={() => {
+                          setEditingPayment(p);
+                          resetPay({
+                            amount: p.amount,
+                            paymentReceived: String(p.paymentReceived),
+                            receivedAt: p.receivedAt ? new Date(p.receivedAt).toISOString().slice(0, 16) : '',
+                            remarks: p.remarks || '',
+                          });
+                        }}
+                        className="text-brand-600 hover:text-brand-700 font-medium text-xs"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {paymentList.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="p-6 text-center text-sm text-slate-400">
+                    <td colSpan="6" className="p-6 text-center text-sm text-slate-400">
                       No payment records yet
                     </td>
                   </tr>

@@ -10,6 +10,7 @@ export default function L2Payments() {
   const [clientFilter, setClientFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
 
   const { data: paymentsData = { payments: [], totalPages: 1, page: 1 }, isLoading } = useQuery({
     queryKey: ['payments', clientFilter, page],
@@ -41,7 +42,8 @@ export default function L2Payments() {
       payments.create({
         client: d.client,
         invoice: d.invoice || undefined,
-        paymentReceived: d.paymentReceived === 'true',
+        amount: Number(d.amount),
+        paymentReceived: d.paymentReceived === 'true' || d.paymentReceived === true,
         receivedAt: d.receivedAt || undefined,
         remarks: d.remarks || undefined,
       }),
@@ -52,18 +54,35 @@ export default function L2Payments() {
     },
   });
 
-  const update = useMutation({
+  const updatePayment = useMutation({
+    mutationFn: (d) =>
+      payments.update(editingPayment._id, {
+        client: d.client,
+        invoice: d.invoice || undefined,
+        amount: Number(d.amount),
+        paymentReceived: d.paymentReceived === 'true' || d.paymentReceived === true,
+        receivedAt: d.receivedAt || undefined,
+        remarks: d.remarks || undefined,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      setEditingPayment(null);
+      reset({ paymentReceived: 'true' });
+    },
+  });
+
+  const markReceived = useMutation({
     mutationFn: ({ id, data }) => payments.update(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payments'] }),
   });
 
   const totalReceived = paymentList
     .filter((p) => p.paymentReceived)
-    .reduce((sum, p) => sum + (p.invoice?.amount || 0), 0);
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const totalPending = paymentList
     .filter((p) => !p.paymentReceived)
-    .reduce((sum, p) => sum + (p.invoice?.amount || 0), 0);
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
 
   return (
     <>
@@ -99,12 +118,35 @@ export default function L2Payments() {
         </div>
       </div>
 
-      {/* New payment form */}
-      {showNew && (
+      {/* New/Edit payment form */}
+      {(showNew || editingPayment) && (
         <form
           className="card card-body mb-5 grid grid-cols-1 gap-3 md:grid-cols-3"
-          onSubmit={handleSubmit((d) => create.mutate(d))}
+          onSubmit={handleSubmit((d) => {
+            if (editingPayment) {
+              updatePayment.mutate(d);
+            } else {
+              create.mutate(d);
+            }
+          })}
         >
+          <div className="md:col-span-3 flex justify-between items-center mb-1">
+            <h3 className="font-semibold text-slate-700">
+              {editingPayment ? 'Edit Payment Record' : 'Record New Payment'}
+            </h3>
+            {editingPayment && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingPayment(null);
+                  reset({ paymentReceived: 'true' });
+                }}
+                className="text-xs text-slate-500 hover:text-slate-700"
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
           <div>
             <label className="label">Client *</label>
             <select className="select" required {...register('client')}>
@@ -146,9 +188,12 @@ export default function L2Payments() {
             <label className="label">Remarks</label>
             <input className="input" {...register('remarks')} />
           </div>
-          <div className="md:col-span-3 flex justify-end">
-            <button className="btn-primary" disabled={create.isPending}>
-              {create.isPending ? 'Saving…' : 'Record Payment'}
+          <div className="md:col-span-3 flex justify-end gap-3">
+            {(create.isSuccess || updatePayment.isSuccess) && (
+              <span className="text-sm text-emerald-600 self-center">Saved ✓</span>
+            )}
+            <button className="btn-primary" disabled={create.isPending || updatePayment.isPending}>
+              {create.isPending || updatePayment.isPending ? 'Saving…' : editingPayment ? 'Update Payment' : 'Record Payment'}
             </button>
           </div>
         </form>
@@ -203,24 +248,42 @@ export default function L2Payments() {
                 <td className="text-slate-500">
                   {p.receivedAt ? fmtDateTime(p.receivedAt) : '—'}
                 </td>
-                <td>{p.recordedByLevel2?.name || '—'}</td>
-                <td className="text-slate-500">{p.remarks || '—'}</td>
-                <td className="text-right">
-                  {!p.paymentReceived && (
-                    <button
-                      className="text-xs text-emerald-600 hover:underline"
-                      onClick={() =>
-                        update.mutate({
-                          id: p._id,
-                          data: { paymentReceived: true, receivedAt: new Date() },
-                        })
-                      }
-                    >
-                      Mark received
-                    </button>
-                  )}
-                </td>
-              </tr>
+                 <td>{p.recordedByLevel2?.name || '—'}</td>
+                 <td className="text-slate-500">{p.remarks || '—'}</td>
+                 <td className="text-right flex items-center justify-end gap-3">
+                   {!p.paymentReceived && (
+                     <button
+                       className="text-xs text-emerald-600 hover:underline"
+                       onClick={() =>
+                         markReceived.mutate({
+                           id: p._id,
+                           data: { paymentReceived: true, receivedAt: new Date() },
+                         })
+                       }
+                     >
+                       Mark received
+                     </button>
+                   )}
+                   <button
+                     className="text-xs text-brand-600 hover:underline font-medium"
+                     onClick={() => {
+                       setEditingPayment(p);
+                       setShowNew(false);
+                       reset({
+                         client: p.client?._id || p.client,
+                         invoice: p.invoice?._id || p.invoice || '',
+                         amount: p.amount,
+                         paymentReceived: String(p.paymentReceived),
+                         receivedAt: p.receivedAt ? new Date(p.receivedAt).toISOString().slice(0, 16) : '',
+                         remarks: p.remarks || '',
+                       });
+                       window.scrollTo({ top: 0, behavior: 'smooth' });
+                     }}
+                   >
+                     Edit
+                   </button>
+                 </td>
+               </tr>
             ))}
             {!isLoading && paymentList.length === 0 && (
               <tr>
