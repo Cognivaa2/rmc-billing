@@ -14,7 +14,7 @@ export const signRefreshToken = (user) =>
 const baseCookie = {
   httpOnly: true,
   secure: isProd,
-  sameSite: 'strict',
+  sameSite: isProd ? 'none' : 'strict',
   domain: env.cookieDomain === 'localhost' ? undefined : env.cookieDomain,
   path: '/',
 };
