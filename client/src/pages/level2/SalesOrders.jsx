@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { salesOrders, dispatches, clients, sites, grades } from '../../api/endpoints.js';
+import { salesOrders, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
 
@@ -122,37 +121,12 @@ function SoDispatchPanel({ soId }) {
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 export default function L2SalesOrders() {
   const qc = useQueryClient();
-  const [showNew, setShowNew] = useState(false);
   const [expandedSo, setExpandedSo] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
 
   const { data = [] } = useQuery({
     queryKey: ['sales-orders'],
     queryFn: () => salesOrders.list(),
-  });
-
-  const { data: clientsList = [] } = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
-  const { data: gradesList = [] } = useQuery({ queryKey: ['grades'], queryFn: () => grades.list() });
-  const { register, handleSubmit, watch, reset } = useForm();
-  const selectedClient = watch('client');
-  const { data: sitesList = [] } = useQuery({
-    queryKey: ['sites', selectedClient],
-    queryFn: () => sites.list({ client: selectedClient }),
-    enabled: Boolean(selectedClient),
-  });
-
-  const create = useMutation({
-    mutationFn: (d) => salesOrders.create({
-      ...d,
-      rate: Number(d.rate),
-      totalQuantity: Number(d.totalQuantity),
-      site: d.site || undefined,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sales-orders'] });
-      setShowNew(false);
-      reset();
-    },
   });
 
   const closeSale = useMutation({
@@ -171,73 +145,23 @@ export default function L2SalesOrders() {
       <PageHeader
         title="Sales Orders"
         subtitle="Monitor dispatches and close sales when delivery is complete."
-        actions={
-          <button className="btn-primary" onClick={() => setShowNew((v) => !v)}>
-            {showNew ? 'Cancel' : 'New SO'}
-          </button>
-        }
       />
 
       {/* Stats bar */}
-      <div className="mb-5 flex gap-3">
-        <div className="flex-1 rounded-xl bg-white border border-slate-200 px-4 py-3">
-          <p className="text-xs text-slate-400">Open</p>
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+          <p className="text-xs text-slate-400 font-medium">Open</p>
           <p className="text-2xl font-bold text-emerald-600">{openCount}</p>
         </div>
-        <div className="flex-1 rounded-xl bg-white border border-slate-200 px-4 py-3">
-          <p className="text-xs text-slate-400">Closed</p>
+        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+          <p className="text-xs text-slate-400 font-medium">Closed</p>
           <p className="text-2xl font-bold text-slate-500">{closedCount}</p>
         </div>
-        <div className="flex-1 rounded-xl bg-white border border-slate-200 px-4 py-3">
-          <p className="text-xs text-slate-400">Total</p>
+        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+          <p className="text-xs text-slate-400 font-medium">Total</p>
           <p className="text-2xl font-bold text-slate-700">{data.length}</p>
         </div>
       </div>
-
-      {/* New SO form */}
-      {showNew && (
-        <form
-          className="card card-body mb-5 grid grid-cols-1 gap-3 md:grid-cols-6"
-          onSubmit={handleSubmit((d) => create.mutate(d))}
-        >
-          <div className="md:col-span-2">
-            <label className="label">Client *</label>
-            <select className="select" required {...register('client')}>
-              <option value="">Select…</option>
-              {clientsList.map((c) => <option key={c._id} value={c._id}>{c.clientName}</option>)}
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="label">Site</label>
-            <select className="select" {...register('site')}>
-              <option value="">—</option>
-              {sitesList.map((s) => <option key={s._id} value={s._id}>{s.siteName}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">Grade *</label>
-            <select className="select" required {...register('grade')}>
-              <option value="">—</option>
-              {gradesList.map((g) => <option key={g._id} value={g._id}>{g.gradeCode}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">Rate (₹) *</label>
-            <input type="number" step="0.01" className="input" required {...register('rate')} />
-          </div>
-          <div>
-            <label className="label">Total Qty (m³) *</label>
-            <input type="number" step="0.01" className="input" required {...register('totalQuantity')} />
-          </div>
-          <div className="md:col-span-5">
-            <label className="label">Notes</label>
-            <input className="input" {...register('notes')} />
-          </div>
-          <div className="flex items-end">
-            <button className="btn-primary w-full" disabled={create.isPending}>Create</button>
-          </div>
-        </form>
-      )}
 
       {/* SO cards */}
       <div className="space-y-3">

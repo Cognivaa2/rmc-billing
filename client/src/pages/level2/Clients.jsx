@@ -100,12 +100,12 @@ export default function L2Clients() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name…"
-          className="input max-w-xs"
+          className="input w-full sm:max-w-xs"
         />
         <select
           value={kycFilter}
           onChange={(e) => setKycFilter(e.target.value)}
-          className="select w-44"
+          className="select w-full sm:w-44"
         >
           <option value="">All KYC</option>
           <option value="pending">Pending</option>
@@ -115,9 +115,9 @@ export default function L2Clients() {
         </select>
       </div>
 
-      <div className="card">
+      <div className="card overflow-x-auto">
         {isLoading && <div className="p-6 text-center text-sm text-slate-400">Loading…</div>}
-        <table className="table-clean">
+        <table className="table-clean min-w-[900px]">
           <thead>
             <tr>
               <th>Client</th>
@@ -169,24 +169,26 @@ export default function L2Clients() {
                         className="flex flex-wrap items-end gap-3"
                         onSubmit={handleSite((d) => createSite.mutate(d))}
                       >
-                        <div>
+                        <div className="w-full sm:w-auto">
                           <label className="label">Site Name *</label>
                           <input className="input" required {...regSite('siteName')} />
                         </div>
-                        <div>
+                        <div className="w-full sm:w-auto">
                           <label className="label">Address</label>
                           <input className="input" {...regSite('siteAddress')} />
                         </div>
-                        <button className="btn-primary" disabled={createSite.isPending}>
-                          {createSite.isPending ? 'Adding…' : 'Add Site'}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          onClick={() => setShowSiteFor(null)}
-                        >
-                          Cancel
-                        </button>
+                        <div className="flex gap-2">
+                          <button className="btn-primary" disabled={createSite.isPending}>
+                            {createSite.isPending ? 'Adding…' : 'Add Site'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => setShowSiteFor(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </form>
                     </td>
                   </tr>
@@ -204,7 +206,7 @@ export default function L2Clients() {
         </table>
         
         {/* Pagination UI */}
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6 gap-3">
           <div className="text-sm text-slate-500">
             Page {data.page || 1} of {data.totalPages || 1}
           </div>

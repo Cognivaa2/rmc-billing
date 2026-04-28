@@ -27,7 +27,7 @@ const STATUS_BADGE = {
 function RejectModal({ order, onClose, onConfirm, isPending }) {
   const [reason, setReason] = useState('');
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <div className="mb-1 flex items-center gap-2">
           <span className="text-xl">❌</span>
@@ -84,7 +84,7 @@ function CreateSoModal({ order, onClose, onConfirm, isPending, error }) {
   const [quantity, setQuantity] = useState(remaining > 0 ? remaining : 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
@@ -102,7 +102,7 @@ function CreateSoModal({ order, onClose, onConfirm, isPending, error }) {
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
             Order Context
           </p>
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
             <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
               <p className="text-xs text-slate-400 mb-0.5">Grade</p>
               <p className="font-semibold text-slate-800 text-sm">{order.grade || '—'}</p>
@@ -156,7 +156,7 @@ function CreateSoModal({ order, onClose, onConfirm, isPending, error }) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
               New SO Details
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="label mb-1 block font-medium text-slate-700">
                   Quantity (m³) <span className="text-red-500">*</span>
@@ -322,8 +322,8 @@ export default function L2Orders() {
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
-        <table className="table-clean">
+      <div className="card overflow-x-auto">
+        <table className="table-clean min-w-[1100px]">
           <thead>
             <tr>
               <th>Order</th>

@@ -129,10 +129,10 @@ export default function L2ClientDetail() {
           Back
         </Link>
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{client.clientName}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-semibold text-slate-900 truncate">{client.clientName}</h1>
             {client.officeAddress && (
-              <p className="mt-1 text-sm text-slate-500">{client.officeAddress}</p>
+              <p className="mt-1 text-sm text-slate-500 line-clamp-2">{client.officeAddress}</p>
             )}
           </div>
           <button
@@ -195,15 +195,15 @@ export default function L2ClientDetail() {
 
 
       {/* Client info strip */}
-      <div className="card card-body mb-5 grid grid-cols-2 gap-4 md:grid-cols-4 text-sm">
+      <div className="card card-body mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 text-sm">
         <div>
           <div className="label">Contact</div>
-          <div>{client.contactNumber}</div>
-          <div className="text-slate-400">{client.email}</div>
+          <div className="font-medium">{client.contactNumber}</div>
+          <div className="text-slate-400 break-all">{client.email}</div>
         </div>
         <div>
           <div className="label">GSTIN</div>
-          <div>{client.taxInformation?.gstin || '—'}</div>
+          <div className="font-medium uppercase">{client.taxInformation?.gstin || '—'}</div>
         </div>
         <div>
           <div className="label">KYC Status</div>
@@ -216,7 +216,7 @@ export default function L2ClientDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-5 flex gap-2">
+      <div className="mb-5 flex flex-wrap gap-2">
         {tabs.map((t) => (
           <button
             key={t}
@@ -374,9 +374,9 @@ export default function L2ClientDetail() {
             </form>
           </div>
 
-          <div className="card">
+          <div className="card overflow-x-auto">
             <div className="border-b border-slate-100 px-5 py-4 font-semibold">Payment History</div>
-            <table className="table-clean">
+            <table className="table-clean min-w-[850px]">
               <thead>
                 <tr>
                   <th>Amount</th>
@@ -432,7 +432,7 @@ export default function L2ClientDetail() {
             </table>
 
             {/* Pagination UI */}
-            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6">
+            <div className="flex flex-wrap items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6 gap-3">
               <div className="text-sm text-slate-500">
                 Page {paymentsData.page || 1} of {paymentsData.totalPages || 1}
               </div>
@@ -480,11 +480,11 @@ export default function L2ClientDetail() {
             </form>
           </div>
 
-          <div className="card">
+          <div className="card overflow-x-auto">
             <div className="border-b border-slate-100 px-5 py-4 font-semibold">
               Sites ({sitesList.length})
             </div>
-            <table className="table-clean">
+            <table className="table-clean min-w-[600px]">
               <thead>
                 <tr>
                   <th>Site Name</th>

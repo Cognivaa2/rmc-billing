@@ -97,7 +97,7 @@ export default function L2Payments() {
       />
 
       {/* KPI chips */}
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="card card-body">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Total Records
@@ -204,7 +204,7 @@ export default function L2Payments() {
         <select
           value={clientFilter}
           onChange={(e) => setClientFilter(e.target.value)}
-          className="select w-60"
+          className="select w-full sm:w-64"
         >
           <option value="">All Clients</option>
           {clientsList.map((c) => (
@@ -215,11 +215,11 @@ export default function L2Payments() {
         </select>
       </div>
 
-      <div className="card">
+      <div className="card overflow-x-auto">
         {isLoading && (
           <div className="p-6 text-center text-sm text-slate-400">Loading…</div>
         )}
-        <table className="table-clean">
+        <table className="table-clean min-w-[1000px]">
           <thead>
             <tr>
               <th>Client</th>
