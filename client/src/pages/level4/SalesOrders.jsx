@@ -4,6 +4,88 @@ import { salesOrders, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
 
+/* ─── Dispatch History Sub-panel ─────────────────────────────────────────── */
+function SoDispatchHistory({ soId }) {
+  const [open, setOpen] = useState(false);
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['dispatches', 'so', soId],
+    queryFn: () => dispatches.list({ salesOrder: soId }),
+    enabled: open,
+  });
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <button
+        className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 transition"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <svg
+          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          className={`transition-transform ${open ? 'rotate-90' : ''}`}
+          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+        {open ? '▲ Hide Dispatches' : '▼ View My Dispatches'}
+      </button>
+
+      {open && (
+        <div className="mt-2">
+          {isLoading && (
+            <p className="text-xs text-slate-400 italic">Loading dispatches…</p>
+          )}
+          {!isLoading && data.length === 0 && (
+            <p className="text-xs text-slate-400 italic">No dispatches submitted yet for this Sales Order.</p>
+          )}
+          {data.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-slate-500">
+                    <th className="px-3 py-2">Dispatch #</th>
+                    <th className="px-3 py-2">Vehicle</th>
+                    <th className="px-3 py-2">Driver</th>
+                    <th className="px-3 py-2">Qty (m³)</th>
+                    <th className="px-3 py-2">When</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((d) => (
+                    <tr key={d._id} className="border-t border-slate-100 hover:bg-slate-50 transition">
+                      <td className="px-3 py-2 font-medium text-slate-700">{d.dispatchNumber}</td>
+                      <td className="px-3 py-2 font-mono text-slate-600 uppercase">{d.vehicleNumber}</td>
+                      <td className="px-3 py-2 text-slate-500">{d.driverName || '—'}</td>
+                      <td className="px-3 py-2 font-semibold text-slate-700">{d.quantity}</td>
+                      <td className="px-3 py-2 text-slate-400">{fmtDateTime(d.dispatchDateTime)}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          d.status === 'dispatched'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : d.status === 'sale_authorized'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {d.status === 'dispatched'
+                            ? '⏳ Awaiting Auth'
+                            : d.status === 'sale_authorized'
+                            ? '✅ Sale Auth.'
+                            : '🧾 Invoiced'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Dispatch Form Modal ────────────────────────────────────────────────── */
 function DispatchFormModal({ so, onClose, isPending, onSubmit, error }) {
   const [form, setForm] = useState({
@@ -14,6 +96,8 @@ function DispatchFormModal({ so, onClose, isPending, onSubmit, error }) {
   });
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const isValid = form.quantity && Number(form.quantity) > 0 && form.vehicleNumber.trim() && form.driverName.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -83,11 +167,13 @@ function DispatchFormModal({ so, onClose, isPending, onSubmit, error }) {
               />
             </div>
             <div>
-              <label className="label mb-1 block">Driver Name</label>
+              <label className="label mb-1 block">
+                Driver Name <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 className="input w-full"
-                placeholder="Optional"
+                placeholder="e.g. Ramesh Kumar"
                 value={form.driverName}
                 onChange={(e) => set('driverName', e.target.value)}
               />
@@ -122,7 +208,7 @@ function DispatchFormModal({ so, onClose, isPending, onSubmit, error }) {
           </button>
           <button
             className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-60 flex items-center gap-2"
-            disabled={isPending || !form.quantity || !form.vehicleNumber}
+            disabled={isPending || !isValid}
             onClick={() => onSubmit(so._id, {
               quantity: Number(form.quantity),
               vehicleNumber: form.vehicleNumber,
@@ -153,6 +239,7 @@ export default function L4SalesOrders() {
   const qc = useQueryClient();
   const [dispatchTarget, setDispatchTarget] = useState(null);
   const [dispatchError, setDispatchError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['sales-orders', 'open'],
@@ -161,11 +248,13 @@ export default function L4SalesOrders() {
 
   const submitDispatch = useMutation({
     mutationFn: ({ soId, data: d }) => dispatches.createFromSalesOrder(soId, d),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['sales-orders'] });
       qc.invalidateQueries({ queryKey: ['dispatches'] });
       setDispatchTarget(null);
       setDispatchError('');
+      setSuccessMsg(`Dispatch ${result?.dispatchNumber || ''} submitted successfully!`);
+      setTimeout(() => setSuccessMsg(''), 4000);
     },
     onError: (err) => {
       setDispatchError(err?.response?.data?.error || 'Failed to submit dispatch');
@@ -178,6 +267,14 @@ export default function L4SalesOrders() {
         title="Sales Orders"
         subtitle="View open sales orders and fill dispatch forms to track concrete delivery."
       />
+
+      {/* Success toast */}
+      {successMsg && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700">
+          <span>✅</span>
+          <span>{successMsg}</span>
+        </div>
+      )}
 
       {isLoading && (
         <div className="card card-body text-center text-sm text-slate-400">Loading…</div>
@@ -196,7 +293,7 @@ export default function L4SalesOrders() {
       <div className="space-y-4">
         {data.map((so) => {
           const pct = so.totalQuantity
-            ? Math.round((so.dispatchedQuantity / so.totalQuantity) * 100)
+            ? Math.round(((so.dispatchedQuantity ?? 0) / so.totalQuantity) * 100)
             : 0;
 
           return (
@@ -208,7 +305,7 @@ export default function L4SalesOrders() {
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="font-semibold text-slate-800">{so.soNumber}</span>
                     <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-100">
-                      Open
+                      ● Open
                     </span>
                     {so.numberOfVehicles && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-100">
@@ -240,32 +337,60 @@ export default function L4SalesOrders() {
                   </div>
                 </div>
 
-                {/* Action */}
+                {/* Action button */}
                 <button
-                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition"
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => { setDispatchError(''); setDispatchTarget(so); }}
                   disabled={so.remainingQuantity <= 0}
-                  title={so.remainingQuantity <= 0 ? 'All quantity dispatched' : 'Fill dispatch form'}
+                  title={so.remainingQuantity <= 0 ? 'All quantity already dispatched' : 'Fill dispatch form'}
                 >
                   🚛 Fill Dispatch
                 </button>
               </div>
 
-              {/* Quantity progress bar */}
-              <div className="mt-4">
-                <div className="mb-1 flex justify-between text-xs text-slate-500">
-                  <span>Dispatched: <strong>{so.dispatchedQuantity ?? 0} m³</strong></span>
-                  <span>Remaining: <strong className={so.remainingQuantity <= 0 ? 'text-red-500' : 'text-emerald-600'}>{so.remainingQuantity} m³</strong></span>
-                  <span>Total: <strong>{so.totalQuantity} m³</strong></span>
+              {/* Quantity stats cards */}
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-center">
+                  <p className="text-xs text-slate-400 mb-0.5">Total Ordered</p>
+                  <p className="font-bold text-slate-800">
+                    {so.totalQuantity} <span className="text-xs font-normal text-slate-400">m³</span>
+                  </p>
                 </div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 text-center">
+                  <p className="text-xs text-emerald-500 mb-0.5">Dispatched</p>
+                  <p className="font-bold text-emerald-700">
+                    {so.dispatchedQuantity ?? 0} <span className="text-xs font-normal text-emerald-500">m³</span>
+                  </p>
+                </div>
+                <div className={`rounded-xl border px-3 py-2.5 text-center ${
+                  (so.remainingQuantity ?? 0) <= 0
+                    ? 'bg-red-50 border-red-100'
+                    : 'bg-amber-50 border-amber-100'
+                }`}>
+                  <p className={`text-xs mb-0.5 ${(so.remainingQuantity ?? 0) <= 0 ? 'text-red-400' : 'text-amber-500'}`}>
+                    Remaining
+                  </p>
+                  <p className={`font-bold ${(so.remainingQuantity ?? 0) <= 0 ? 'text-red-600' : 'text-amber-700'}`}>
+                    {so.remainingQuantity ?? 0} <span className="text-xs font-normal">m³</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-3">
                 <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-red-400' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                    className={`h-full rounded-full transition-all ${
+                      pct >= 100 ? 'bg-red-400' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-500'
+                    }`}
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
                 </div>
                 <div className="mt-0.5 text-right text-xs text-slate-400">{pct}% dispatched</div>
               </div>
+
+              {/* Dispatch history */}
+              <SoDispatchHistory soId={so._id} />
             </div>
           );
         })}

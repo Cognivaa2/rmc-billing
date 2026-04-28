@@ -89,6 +89,15 @@ export const createDispatch = asyncHandler(async (req, res) => {
     so.remainingQuantity = Math.max(0, so.totalQuantity - so.dispatchedQuantity);
     await so.save();
 
+    // ── Auto-advance parent Order to DISPATCHED when ALL its SOs are fully dispatched ──
+    if (so.remainingQuantity === 0 && so.sourceOrder) {
+      const allSosForOrder = await SalesOrder.find({ sourceOrder: so.sourceOrder });
+      const allFullyDispatched = allSosForOrder.every((s) => s.remainingQuantity === 0);
+      if (allFullyDispatched) {
+        await Order.findByIdAndUpdate(so.sourceOrder, { status: ORDER_STATUS.DISPATCHED });
+      }
+    }
+
   // ── Mode 2: Order-based dispatch (legacy) ─────────────────────────────────
   } else {
     const order = await Order.findById(orderId);
@@ -97,10 +106,14 @@ export const createDispatch = asyncHandler(async (req, res) => {
       throw ApiError.badRequest(`Dispatch requires APPROVED order. Current: ${order.status}`);
     }
 
-    // Resolve grade: Order.grade is a gradeCode string
+    // Resolve grade: Order.grade is a gradeCode string → find or auto-create
     const { ConcreteGrade } = await import('../models/ConcreteGrade.js');
-    const gradeDoc = await ConcreteGrade.findOne({ gradeCode: order.grade.toUpperCase().trim() });
-    if (!gradeDoc) throw ApiError.badRequest(`Grade "${order.grade}" not found in grade master`);
+    const gradeCode = order.grade.toUpperCase().trim();
+    const gradeDoc = await ConcreteGrade.findOneAndUpdate(
+      { gradeCode },
+      { $setOnInsert: { gradeCode, description: `Auto-created from order ${order.orderNumber}` } },
+      { upsert: true, new: true },
+    );
 
     client = order.client;
     site = order.site;

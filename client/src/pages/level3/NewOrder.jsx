@@ -43,7 +43,7 @@ export default function L3NewOrder() {
       <PageHeader title="New Order" subtitle="Enter a daily order with negotiated rate." />
 
       <form
-        className="card card-body grid grid-cols-1 gap-4 md:grid-cols-3"
+        className="card card-body grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
         onSubmit={handleSubmit((d) => create.mutate(d))}
       >
         {/* Client */}
@@ -68,7 +68,7 @@ export default function L3NewOrder() {
           </select>
         </div>
 
-        {/* Concrete Grade — hardcoded list, no DB needed */}
+        {/* Concrete Grade */}
         <div>
           <label className="label">Concrete Grade *</label>
           <select className="select" required {...register('grade')}>
@@ -113,14 +113,32 @@ export default function L3NewOrder() {
           <input type="date" className="input" {...register('deliveryDate')} />
         </div>
 
-        {/* Remarks */}
-        <div className="md:col-span-3">
+        {/* Remarks — full width */}
+        <div className="sm:col-span-2 md:col-span-3">
           <label className="label">Remarks</label>
           <textarea rows="2" className="input" placeholder="Optional notes…" {...register('remarks')} />
         </div>
 
-        <div className="md:col-span-3 flex justify-end">
-          <button className="btn-primary" disabled={create.isPending}>
+        {/* Error */}
+        {create.isError && (
+          <div className="sm:col-span-2 md:col-span-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {create.error?.response?.data?.message || 'Failed to submit order.'}
+          </div>
+        )}
+
+        {/* Actions — full width, stacked on mobile */}
+        <div className="sm:col-span-2 md:col-span-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <button
+            type="button"
+            className="btn-secondary w-full sm:w-auto"
+            onClick={() => nav('/l3/orders')}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn-primary w-full sm:w-auto"
+            disabled={create.isPending}
+          >
             {create.isPending ? 'Submitting…' : 'Submit Order'}
           </button>
         </div>

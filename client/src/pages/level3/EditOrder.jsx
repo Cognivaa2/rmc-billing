@@ -23,7 +23,6 @@ export default function L3EditOrder() {
   const { register, handleSubmit, watch, reset } = useForm();
   const clientId = watch('client');
 
-  // Pre-fill form when order loads
   useEffect(() => {
     if (order) {
       reset({
@@ -61,19 +60,41 @@ export default function L3EditOrder() {
   });
 
   if (isLoading) {
-    return <div className="card card-body text-center text-slate-400">Loading…</div>;
+    return (
+      <div className="card card-body flex items-center justify-center gap-3 py-12 text-slate-400">
+        <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        Loading order…
+      </div>
+    );
   }
 
   if (!order) {
-    return <div className="card card-body text-center text-red-500">Order not found.</div>;
+    return (
+      <div className="card card-body text-center py-10 text-red-500">
+        <div className="text-2xl mb-2">⚠️</div>
+        Order not found.
+      </div>
+    );
   }
 
   if (order.status !== 'PENDING') {
     return (
-      <div className="card card-body text-center text-amber-600">
-        <div className="text-2xl mb-2">🔒</div>
-        <div className="font-semibold">Cannot Edit</div>
-        <div className="text-sm mt-1">Only <strong>PENDING</strong> orders can be edited. This order is <strong>{order.status}</strong>.</div>
+      <div className="card card-body text-center py-12 text-amber-600">
+        <div className="text-4xl mb-3">🔒</div>
+        <div className="font-semibold text-lg">Cannot Edit</div>
+        <div className="text-sm mt-1 text-slate-500">
+          Only <strong>PENDING</strong> orders can be edited.{' '}
+          This order is <strong>{order.status}</strong>.
+        </div>
+        <button
+          className="mt-5 btn-secondary text-sm"
+          onClick={() => nav('/l3/orders')}
+        >
+          ← Back to My Orders
+        </button>
       </div>
     );
   }
@@ -81,15 +102,15 @@ export default function L3EditOrder() {
   return (
     <>
       <PageHeader
-        title={`Edit Order — ${order.orderNumber}`}
+        title={`Edit — ${order.orderNumber}`}
         subtitle="You can only edit orders that are still pending approval."
       />
 
       <form
-        className="card card-body grid grid-cols-1 gap-4 md:grid-cols-3"
+        className="card card-body grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
         onSubmit={handleSubmit((d) => update.mutate(d))}
       >
-        {/* Client — read only, cannot change after creation */}
+        {/* Client — read only */}
         <div>
           <label className="label">Client</label>
           <div className="input bg-slate-50 text-slate-500 cursor-not-allowed select-none">
@@ -152,27 +173,32 @@ export default function L3EditOrder() {
           <input type="date" className="input" {...register('deliveryDate')} />
         </div>
 
-        {/* Remarks */}
-        <div className="md:col-span-3">
+        {/* Remarks — full width */}
+        <div className="sm:col-span-2 md:col-span-3">
           <label className="label">Remarks</label>
           <textarea rows="2" className="input" {...register('remarks')} />
         </div>
 
+        {/* Error */}
         {update.isError && (
-          <div className="md:col-span-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="sm:col-span-2 md:col-span-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {update.error?.response?.data?.message || 'Failed to update order.'}
           </div>
         )}
 
-        <div className="md:col-span-3 flex justify-end gap-3">
+        {/* Actions — stacked on mobile, inline on desktop */}
+        <div className="sm:col-span-2 md:col-span-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button
             type="button"
-            className="btn-secondary"
+            className="btn-secondary w-full sm:w-auto"
             onClick={() => nav('/l3/orders')}
           >
             Cancel
           </button>
-          <button className="btn-primary" disabled={update.isPending}>
+          <button
+            className="btn-primary w-full sm:w-auto"
+            disabled={update.isPending}
+          >
             {update.isPending ? 'Saving…' : 'Save Changes'}
           </button>
         </div>

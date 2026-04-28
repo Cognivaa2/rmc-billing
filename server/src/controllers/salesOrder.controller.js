@@ -88,15 +88,13 @@ export const createSalesOrderFromOrder = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Sales Order can only be created from an APPROVED order');
   }
 
-  // Resolve grade: Order.grade is a gradeCode string → find ConcreteGrade ObjectId
-  const gradeDoc = await ConcreteGrade.findOne({
-    gradeCode: order.grade.toUpperCase().trim(),
-  });
-  if (!gradeDoc) {
-    throw ApiError.badRequest(
-      `Grade "${order.grade}" not found in grade master. Please add it first.`,
-    );
-  }
+  // Resolve grade: Order.grade is a gradeCode string → find or auto-create ConcreteGrade
+  const gradeCode = order.grade.toUpperCase().trim();
+  const gradeDoc = await ConcreteGrade.findOneAndUpdate(
+    { gradeCode },
+    { $setOnInsert: { gradeCode, description: `Auto-created from order ${order.orderNumber}` } },
+    { upsert: true, new: true },
+  );
 
   // Calculate remaining unallocated quantity for this Order
   const existingSOs = await SalesOrder.find({ sourceOrder: order._id });

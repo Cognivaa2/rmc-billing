@@ -32,7 +32,6 @@ import L3MyOrders from './pages/level3/MyOrders.jsx';
 import L3EditOrder from './pages/level3/EditOrder.jsx';
 
 import L4Dashboard from './pages/level4/Dashboard.jsx';
-import L4ApprovedOrders from './pages/level4/ApprovedOrders.jsx';
 import L4Dispatches from './pages/level4/Dispatches.jsx';
 import L4SalesOrders from './pages/level4/SalesOrders.jsx';
 import L4Invoices from './pages/level4/Invoices.jsx';
@@ -92,7 +91,6 @@ export default function App() {
       <Route element={<RequireAuth levels={[4]}><Layout /></RequireAuth>}>
         <Route path="/l4" element={<L4Dashboard />} />
         <Route path="/l4/sales-orders" element={<L4SalesOrders />} />
-        <Route path="/l4/approved-orders" element={<L4ApprovedOrders />} />
         <Route path="/l4/dispatches" element={<L4Dispatches />} />
         <Route path="/l4/invoices" element={<L4Invoices />} />
         <Route path="/l4/batchsheets" element={<L4Batchsheets />} />

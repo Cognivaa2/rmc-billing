@@ -40,12 +40,9 @@ function PipelineBar({ status }) {
         <div key={s} className="flex items-center flex-1">
           <div
             title={s}
-            className={`h-2 rounded-full flex-1 transition-all ${i < idx
-              ? 'bg-emerald-400'
-              : i === idx
-                ? 'bg-brand-600'
-                : 'bg-slate-200'
-              }`}
+            className={`h-2 rounded-full flex-1 transition-all ${
+              i < idx ? 'bg-emerald-400' : i === idx ? 'bg-brand-600' : 'bg-slate-200'
+            }`}
           />
           {i < PIPELINE_STEPS.length - 1 && <div className="w-1" />}
         </div>
@@ -59,7 +56,6 @@ export default function L3MyOrders() {
   const [activeFilter, setActiveFilter] = useState(location.state?.filter || 'ALL');
   const [page, setPage] = useState(1);
 
-  // For counts
   const { data: allData = [] } = useQuery({
     queryKey: ['orders', 'mine', 'ALL'],
     queryFn: () => orders.list({ mine: 'true' }),
@@ -71,7 +67,6 @@ export default function L3MyOrders() {
     return acc;
   }, { ALL: 0 });
 
-  // Paginated list
   const { data, isLoading } = useQuery({
     queryKey: ['orders', 'mine', activeFilter, page],
     queryFn: () =>
@@ -92,26 +87,30 @@ export default function L3MyOrders() {
       <PageHeader
         title="My Orders"
         subtitle="Track and manage all your concrete orders."
-        actions={<Link to="/l3/orders/new" className="btn-primary">+ New Order</Link>}
+        actions={
+          <Link to="/l3/orders/new" className="btn-primary text-sm px-4 py-2">
+            + New Order
+          </Link>
+        }
       />
 
-      {/* Filter chips */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      {/* Filter chips — scrollable on mobile */}
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => { setActiveFilter(f.key); setPage(1); }}
-            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${activeFilter === f.key
-              ? 'bg-brand-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-              }`}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+              activeFilter === f.key
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
           >
             {f.label}
             {counts[f.key] > 0 && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${activeFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                  }`}
-              >
+              <span className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                activeFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}>
                 {counts[f.key]}
               </span>
             )}
@@ -127,15 +126,13 @@ export default function L3MyOrders() {
 
         {ordersList.map((o) => (
           <div key={o._id} className="card card-body">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            {/* Top section */}
+            <div className="flex flex-wrap items-start justify-between gap-2">
               {/* Left: order info */}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-800">{o.orderNumber}</span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[o.status] || 'bg-slate-100 text-slate-600'
-                      }`}
-                  >
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[o.status] || 'bg-slate-100 text-slate-600'}`}>
                     {FILTERS.find((f) => f.key === o.status)?.label || o.status}
                   </span>
                 </div>
@@ -151,28 +148,23 @@ export default function L3MyOrders() {
                   <span className="ml-2 font-medium text-slate-700">{fmtMoney(o.negotiatedRate)}/m³</span>
                 </div>
 
-                <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-400">
+                {/* Meta info — wrap on mobile */}
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
                   {o.site?.siteName && <span>📍 {o.site.siteName}</span>}
                   {o.deliveryDate && (
                     <span>🗓 {new Date(o.deliveryDate).toLocaleDateString('en-IN')}</span>
                   )}
-                  {o.remarks && (
-                    <span className="truncate max-w-xs">💬 {o.remarks}</span>
-                  )}
+                  <span>{fmtDateTime(o.createdAt)}</span>
                 </div>
               </div>
 
-              {/* Right: time + actions */}
+              {/* Right: actions */}
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <div className="text-xs text-slate-400">{fmtDateTime(o.createdAt)}</div>
-
                 {o.approvedByLevel2?.name && (
                   <div className="text-xs text-slate-500">
-                    ✅ Approved by <span className="font-medium">{o.approvedByLevel2.name}</span>
+                    ✅ <span className="font-medium">{o.approvedByLevel2.name}</span>
                   </div>
                 )}
-
-                {/* Edit — only for PENDING */}
                 {o.status === 'PENDING' && (
                   <Link
                     to={`/l3/orders/${o._id}/edit`}
@@ -181,24 +173,32 @@ export default function L3MyOrders() {
                     ✏️ Edit
                   </Link>
                 )}
+                {o.status === 'REJECTED' && o.rejectionReason && (
+                  <div className="max-w-[180px] rounded-lg bg-red-50 border border-red-200 px-2 py-1 text-xs text-red-600">
+                    ⚠ {o.rejectionReason}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Pipeline progress bar */}
+            {/* Pipeline progress */}
             <div className="mt-3 border-t border-slate-50 pt-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <PipelineBar status={o.status} />
-                <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">
+                <span className="hidden sm:block text-xs text-slate-400 whitespace-nowrap shrink-0">
                   {STATUS_DESC[o.status]}
                 </span>
               </div>
+              {/* Status description — visible only on mobile below the bar */}
+              <p className="sm:hidden mt-1 text-xs text-slate-400">{STATUS_DESC[o.status]}</p>
             </div>
           </div>
         ))}
 
+        {/* Empty state */}
         {!isLoading && ordersList.length === 0 && (
-          <div className="card card-body text-center text-slate-400 py-10">
-            <div className="text-3xl mb-3">📋</div>
+          <div className="card card-body text-center text-slate-400 py-12">
+            <div className="text-4xl mb-3">📋</div>
             <div className="text-sm font-medium">
               {activeFilter === 'ALL'
                 ? 'No orders yet.'
@@ -212,39 +212,32 @@ export default function L3MyOrders() {
           </div>
         )}
 
-        {/* Pagination controls */}
-        {totalPages > 0 && (
-          <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-xl shadow-sm">
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-slate-700">
-                  Showing page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
-                </p>
-              </div>
-              <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
-                  >
-                    <span className="sr-only">Previous</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
-                  >
-                    <span className="sr-only">Next</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
-              </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-sm text-slate-500">
+              Page <span className="font-medium">{page}</span> of{' '}
+              <span className="font-medium">{totalPages}</span>
+            </p>
+            <div className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="relative inline-flex items-center rounded-l-md px-3 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="relative inline-flex items-center rounded-r-md px-3 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
           </div>
         )}

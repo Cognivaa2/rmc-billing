@@ -102,26 +102,54 @@ function CreateSoModal({ order, onClose, onConfirm, isPending, error }) {
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
             Order Context
           </p>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
-              <p className="text-xs text-slate-400 mb-0.5">Concrete Grade</p>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+              <p className="text-xs text-slate-400 mb-0.5">Grade</p>
               <p className="font-semibold text-slate-800 text-sm">{order.grade || '—'}</p>
             </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
-              <p className="text-xs text-slate-400 mb-0.5">Total Quantity</p>
+            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+              <p className="text-xs text-slate-400 mb-0.5">Total Qty</p>
               <p className="font-semibold text-slate-800 text-sm">{order.quantity} m³</p>
             </div>
-            <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
-              <p className="text-xs text-blue-500 mb-0.5">Unallocated Qty</p>
-              <p className={`font-semibold text-sm ${remaining > 0 ? 'text-blue-700' : 'text-red-500'}`}>
+            <div className={`rounded-xl border px-3 py-2.5 ${remaining > 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+              <p className={`text-xs mb-0.5 ${remaining > 0 ? 'text-blue-500' : 'text-red-400'}`}>Remaining</p>
+              <p className={`font-bold text-sm ${remaining > 0 ? 'text-blue-700' : 'text-red-600'}`}>
                 {remaining} m³
               </p>
             </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
-              <p className="text-xs text-slate-400 mb-0.5">Site</p>
-              <p className="font-semibold text-slate-800 text-sm truncate">{order.site?.siteName || '—'}</p>
-            </div>
           </div>
+
+          {/* Already-allocated SOs for this order */}
+          {sos.filter(so => so.sourceOrder === order._id || so.sourceOrder?._id === order._id).length > 0 && (
+            <div className="mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+              <p className="text-xs font-semibold text-slate-400 mb-1.5">Existing Sales Orders for this Order</p>
+              <div className="space-y-1">
+                {sos.filter(so => so.sourceOrder === order._id || so.sourceOrder?._id === order._id).map(so => (
+                  <div key={so._id} className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-700">{so.soNumber}</span>
+                    <span className="text-slate-500">{so.totalQuantity} m³</span>
+                    <span className={`rounded-full px-2 py-0.5 font-medium ${
+                      so.status === 'open' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                    }`}>{so.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {remaining <= 0 && (
+            <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+              ⚠ All {order.quantity} m³ has already been allocated to Sales Orders. No remaining quantity available.
+            </div>
+          )}
+
+          {/* Site info */}
+          {order.site?.siteName && (
+            <div className="mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 flex items-center gap-2">
+              <span className="text-xs text-slate-400">Site:</span>
+              <span className="text-xs font-medium text-slate-700">{order.site.siteName}</span>
+            </div>
+          )}
 
           {/* Editable fields */}
           <div className="mb-1">
