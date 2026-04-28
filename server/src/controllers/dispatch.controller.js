@@ -149,3 +149,37 @@ export const createDispatch = asyncHandler(async (req, res) => {
   const populated = await populateDispatch(DispatchForm.findById(dispatch._id));
   res.status(201).json({ dispatch: populated });
 });
+
+/**
+ * PATCH /dispatches/:id/authorize
+ * L2 authorizes sale for a specific dispatch (works for both SO-based and order-based).
+ */
+export const authorizeSaleByDispatch = asyncHandler(async (req, res) => {
+  const dispatch = await populateDispatch(DispatchForm.findById(req.params.id));
+  if (!dispatch) throw ApiError.notFound('Dispatch not found');
+  if (dispatch.status !== 'dispatched') {
+    throw ApiError.badRequest(`Dispatch is already ${dispatch.status}`);
+  }
+
+  dispatch.status = 'sale_authorized';
+  await dispatch.save();
+
+  // If linked to a parent order, update its status too
+  if (dispatch.order?._id || dispatch.order) {
+    const orderId = dispatch.order?._id || dispatch.order;
+    await Order.findByIdAndUpdate(orderId, {
+      status: ORDER_STATUS.SALE_AUTHORIZED,
+      saleAuthorizedByLevel2: req.user.id,
+      saleAuthorizedAt: new Date(),
+    });
+  }
+
+  await notifyLevels([4], {
+    type: 'sale_authorized',
+    message: `Sale authorised for dispatch ${dispatch.dispatchNumber} — invoice can be generated`,
+    relatedEntity: { kind: 'DispatchForm', id: dispatch._id },
+  });
+
+  const updated = await populateDispatch(DispatchForm.findById(dispatch._id));
+  res.json({ dispatch: updated });
+});

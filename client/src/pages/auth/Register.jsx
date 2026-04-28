@@ -19,11 +19,14 @@ export default function Register() {
       setAuth(res.user);
       navigate('/');
     } catch (e) {
-      setError(e.response?.data?.error?.message || 'Registration failed');
+      const errData = e.response?.data;
+      // Backend sends { error: "string message", details?: {...} }
+      setError(errData?.error || errData?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">

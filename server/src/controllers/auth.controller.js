@@ -23,9 +23,9 @@ export const register = asyncHandler(async (req, res) => {
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) throw ApiError.badRequest('Email already in use');
 
-  const count = await User.countDocuments();
-  if (count > 0) {
-    throw ApiError.forbidden('Admin already registered. Please login.');
+  const adminExists = await User.exists({ level: 1 });
+  if (adminExists) {
+    throw ApiError.badRequest('Admin already registered. Please login.');
   }
 
   const hash = await bcrypt.hash(password, 12);

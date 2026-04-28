@@ -60,7 +60,9 @@ export const dispatches = {
   create: (data) => api.post('/dispatches', data).then((r) => r.data.dispatch),
   createFromSalesOrder: (soId, data) =>
     api.post('/dispatches', { salesOrder: soId, ...data }).then((r) => r.data.dispatch),
+  authorize: (id) => api.patch(`/dispatches/${id}/authorize`).then((r) => r.data.dispatch),
 };
+
 
 export const invoices = {
   list: (params) => api.get('/invoices', { params }).then((r) => r.data.invoices),
