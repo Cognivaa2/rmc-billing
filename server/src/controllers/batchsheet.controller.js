@@ -28,8 +28,14 @@ export const listBatchsheets = asyncHandler(async (req, res) => {
 });
 
 export const createBatchsheet = asyncHandler(async (req, res) => {
-  const dispatch = await DispatchForm.findById(req.body.dispatch);
+  const dispatch = await DispatchForm.findById(req.body.dispatch).populate('salesOrder');
   if (!dispatch) throw ApiError.notFound('Dispatch not found');
+
+  // Enforce SO closure rule
+  if (dispatch.salesOrder && dispatch.salesOrder.status !== 'closed') {
+    throw ApiError.badRequest('Batchsheets can only be generated after the Sales Order is CLOSED by Level 2.');
+  }
+
   const batchsheet = await Batchsheet.create({
     ...req.body,
     generatedByLevel4: req.user.id,
@@ -37,12 +43,40 @@ export const createBatchsheet = asyncHandler(async (req, res) => {
   res.status(201).json({ batchsheet });
 });
 
+export const updateBatchsheetSchema = z.object({
+  mixDesignData: z.record(z.any()),
+});
+
+export const updateBatchsheet = asyncHandler(async (req, res) => {
+  const batchsheet = await Batchsheet.findById(req.params.id).populate({
+    path: 'dispatch',
+    populate: { path: 'salesOrder' }
+  });
+  if (!batchsheet) throw ApiError.notFound();
+
+  // Enforce SO closure rule on update as well
+  const dispatch = batchsheet.dispatch;
+  if (dispatch?.salesOrder && dispatch.salesOrder.status !== 'closed') {
+    throw ApiError.badRequest('Batchsheet values can only be filled/updated after the Sales Order is CLOSED by Level 2.');
+  }
+  
+  // Update mixDesignData
+  batchsheet.mixDesignData = {
+    ...batchsheet.mixDesignData,
+    ...req.body.mixDesignData,
+  };
+  
+  await batchsheet.save();
+  res.json({ batchsheet });
+});
+
 export const getBatchsheetPdf = asyncHandler(async (req, res) => {
   const batchsheet = await Batchsheet.findById(req.params.id).populate('template');
   if (!batchsheet) throw ApiError.notFound();
-  const dispatch = await DispatchForm.findById(batchsheet.dispatch);
-  const client = await Client.findById(dispatch.client);
-  const grade = await ConcreteGrade.findById(dispatch.grade);
+  const dispatch = await DispatchForm.findById(batchsheet.dispatch)
+    .populate('order site client grade');
+  const client = dispatch.client;
+  const grade = dispatch.grade;
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(

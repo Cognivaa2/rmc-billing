@@ -5,6 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { nextSoNumber } from '../utils/sequence.js';
 import { ConcreteGrade } from '../models/ConcreteGrade.js';
 import { Order } from '../models/Order.js';
+import { DispatchForm } from '../models/DispatchForm.js';
 
 export const createSoSchema = z.object({
   client: z.string(),
@@ -61,6 +62,13 @@ export const closeSalesOrder = asyncHandler(async (req, res) => {
   so.closedByLevel2 = req.user.id;
   so.closedAt = new Date();
   await so.save();
+
+  // ALSO: Mark all dispatches under this SO as sale_authorized so they can be invoiced
+  await DispatchForm.updateMany(
+    { salesOrder: so._id, status: 'dispatched' },
+    { status: 'sale_authorized' }
+  );
+
   res.json({ salesOrder: so });
 });
 

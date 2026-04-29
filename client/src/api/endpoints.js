@@ -71,6 +71,7 @@ export const invoices = {
   reserveBlock: (count = 50) => api.post('/invoices/reserve-block', { count }).then((r) => r.data),
   myBlocks: () => api.get('/invoices/blocks').then((r) => r.data.blocks),
   sync: (invoicesArr) => api.post('/invoices/sync', { invoices: invoicesArr }).then((r) => r.data.results),
+  pdfUrl: (id) => `${api.defaults.baseURL}/invoices/${id}/pdf`,
 };
 
 export const batchsheetTemplates = {
@@ -82,6 +83,7 @@ export const batchsheetTemplates = {
 export const batchsheets = {
   list: (params) => api.get('/batchsheets', { params }).then((r) => r.data.batchsheets),
   create: (data) => api.post('/batchsheets', data).then((r) => r.data.batchsheet),
+  update: (id, data) => api.patch(`/batchsheets/${id}`, data).then((r) => r.data.batchsheet),
   pdfUrl: (id) => `${api.defaults.baseURL}/batchsheets/${id}/pdf`,
 };
 

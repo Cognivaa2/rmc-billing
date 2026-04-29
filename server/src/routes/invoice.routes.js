@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate.js';
 import {
   listInvoices,
   getInvoice,
+  getInvoicePdf,
   createInvoice,
   reserveBlock,
   listMyBlocks,
@@ -22,5 +23,6 @@ router.post('/reserve-block', rbac(4), validate(reserveBlockSchema), reserveBloc
 router.post('/sync', rbac(4), validate(syncOfflineSchema), syncOfflineInvoices);
 router.post('/', rbac(4), validate(createInvoiceSchema), createInvoice);
 router.get('/:id', getInvoice);
+router.get('/:id/pdf', getInvoicePdf);
 
 export default router;

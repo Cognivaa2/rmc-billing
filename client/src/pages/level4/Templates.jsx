@@ -7,13 +7,17 @@ import { fmtDateTime } from '../../utils/format.js';
 
 // Suggested standard field keys matching the Docket/Batch Report format
 const SUGGESTED_FIELDS = [
-  'sand1', 'sand2', 'agg_10mm1', 'agg_10mm2',   // Aggregate
-  'agg5', 'agg6', 'opc', 'ppc2', 'cem3', 'cem4', 'flyAsh', // Cement
-  'water', 'wtr2', 'wtr3',                        // Water/Ice
-  'admi1', 'adm', 'admi2',                        // Admixture
-  'batchNumber', 'batcherName', 'recipeCode', 'recipeName',  // Metadata
+  'sand1', 'sand2', 'agg_10mm1', 'agg_10mm2', 'agg5', 'agg6', // Aggregate
+  'opc', 'ppc2', 'cem3', 'cem4', 'flyAsh', // Cement
+  'water', 'wtr2', 'wtr3', // Water/Ice
+  'admi1', 'adm', 'admi2', // Admixture
+  'target_sand1', 'target_sand2', 'target_agg_10mm1', 'target_agg_10mm2', 'target_agg5', 'target_agg6',
+  'target_opc', 'target_ppc2', 'target_cem3', 'target_cem4', 'target_flyAsh',
+  'target_water', 'target_wtr2', 'target_wtr3',
+  'target_admi1', 'target_adm', 'target_admi2',
+  'batchNumber', 'batcherName', 'recipeCode', 'recipeName',
   'truckDriver', 'plantSerialNumber', 'mixerCapacity', 'batchSize',
-  'target_sand1', 'target_sand2', 'target_agg_10mm1', 'target_agg_10mm2',
+  'orderedQuantity', 'productionQuantity', 'adjQuantity', 'withThisLoad',
 ];
 
 function FieldEditor({ control, register, name }) {

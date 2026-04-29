@@ -6,6 +6,8 @@ import { DispatchForm } from '../models/DispatchForm.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { notifyLevels } from '../services/notification.service.js';
+import { getOrCreateSettings } from '../models/CompanySettings.js';
+import { renderInvoicePdf } from '../pdf/invoicePdf.js';
 
 function currentFinancialYear() {
   const now = new Date();
@@ -89,16 +91,28 @@ async function allocateInvoiceNumber(userId) {
 }
 
 export const createInvoice = asyncHandler(async (req, res) => {
-  const dispatch = await DispatchForm.findById(req.body.dispatch);
+  const dispatch = await DispatchForm.findById(req.body.dispatch).populate('salesOrder order');
   if (!dispatch) throw ApiError.notFound('Dispatch not found');
 
-  const order = await Order.findById(dispatch.order);
-  if (!order) throw ApiError.notFound('Order not found');
-
-  if (order.status !== ORDER_STATUS.SALE_AUTHORIZED) {
+  // New Rule: If linked to a Sales Order, it MUST be closed.
+  if (dispatch.salesOrder && dispatch.salesOrder.status !== 'closed') {
     throw ApiError.badRequest(
-      `Invoice can only be generated after L2 sale authorisation. Order status: ${order.status}`,
+      `Invoices can only be generated after the Sales Order (${dispatch.salesOrder.soNumber}) is CLOSED by Level 2.`,
     );
+  }
+
+  // Legacy Rule: If linked to an Order (and no SO), it must be sale_authorized.
+  const order = dispatch.order;
+  if (!dispatch.salesOrder && order) {
+    if (order.status !== ORDER_STATUS.SALE_AUTHORIZED) {
+      throw ApiError.badRequest(
+        `Invoice can only be generated after L2 sale authorisation. Order status: ${order.status}`,
+      );
+    }
+  }
+
+  if (!order && !dispatch.salesOrder) {
+    throw ApiError.badRequest('Dispatch must be linked to an Order or Sales Order to generate an invoice.');
   }
 
   if (req.body.idempotencyKey) {
@@ -176,11 +190,38 @@ export const getInvoice = asyncHandler(async (req, res) => {
   const invoice = await Invoice.findById(req.params.id)
     .populate('client')
     .populate('grade')
-    .populate('dispatch')
+    .populate({
+      path: 'dispatch',
+      populate: { path: 'site' }
+    })
     .populate('order')
     .populate('generatedByLevel4', 'name');
   if (!invoice) throw ApiError.notFound();
   res.json({ invoice });
+});
+
+export const getInvoicePdf = asyncHandler(async (req, res) => {
+  const invoice = await Invoice.findById(req.params.id)
+    .populate('client')
+    .populate('grade')
+    .populate({
+      path: 'dispatch',
+      populate: { path: 'site' }
+    })
+    .populate('order')
+    .populate('generatedByLevel4', 'name');
+
+  if (!invoice) throw ApiError.notFound('Invoice not found');
+
+  const company = await getOrCreateSettings();
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename=Invoice_${invoice.invoiceNumber}.pdf`,
+  );
+
+  renderInvoicePdf(res, { invoice, company });
 });
 
 export const syncOfflineSchema = z.object({
@@ -190,7 +231,7 @@ export const syncOfflineSchema = z.object({
       dispatch: z.string(),
       order: z.string(),
       showRateOnInvoice: z.boolean().optional(),
-      quantity: z.number().positive(),
+      quantity: z.number().nonnegative(),
       rate: z.number().nonnegative(),
       amount: z.number().nonnegative(),
       idempotencyKey: z.string(),
@@ -209,12 +250,20 @@ export const syncOfflineInvoices = asyncHandler(async (req, res) => {
       continue;
     }
     const order = await Order.findById(payload.order);
-    const dispatch = await DispatchForm.findById(payload.dispatch);
+    const dispatch = await DispatchForm.findById(payload.dispatch).populate('salesOrder');
     if (!order || !dispatch) {
       results.push({ idempotencyKey: payload.idempotencyKey, status: 'invalid_refs' });
       continue;
     }
-    if (order.status !== ORDER_STATUS.SALE_AUTHORIZED && order.status !== ORDER_STATUS.INVOICED) {
+
+    // SO closure check for sync
+    if (dispatch.salesOrder && dispatch.salesOrder.status !== 'closed') {
+      results.push({ idempotencyKey: payload.idempotencyKey, status: 'so_not_closed' });
+      continue;
+    }
+
+    // Legacy order check for sync
+    if (!dispatch.salesOrder && order.status !== ORDER_STATUS.SALE_AUTHORIZED && order.status !== ORDER_STATUS.INVOICED) {
       results.push({ idempotencyKey: payload.idempotencyKey, status: 'not_authorized' });
       continue;
     }
@@ -224,7 +273,7 @@ export const syncOfflineInvoices = asyncHandler(async (req, res) => {
         dispatch: dispatch._id,
         order: order._id,
         client: order.client,
-        grade: order.grade,
+        grade: dispatch.grade,
         quantity: payload.quantity,
         rate: payload.rate,
         amount: payload.amount,

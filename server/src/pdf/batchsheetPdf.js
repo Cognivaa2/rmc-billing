@@ -149,17 +149,18 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
   y += 3;
 
   // ── Mix Design Table ────────────────────────────────────────────────
-  // Column group definitions
+  // Column group definitions updated to match image:
+  // Agg: 6 cols, Cement: 5 cols, Water: 3 cols, Admixture: 3 cols
   const groups = [
     {
       label: 'Aggregate',
-      sub: ['SAND', 'SAND', '10MM', '10MM'],
-      keys: ['sand1', 'sand2', 'agg_10mm1', 'agg_10mm2'],
+      sub: ['SAND', 'SAND', '10MM', '10MM', 'Agg5', 'Agg6'],
+      keys: ['sand1', 'sand2', 'agg_10mm1', 'agg_10mm2', 'agg5', 'agg6'],
     },
     {
       label: 'Cement',
-      sub: ['Agg5', 'Agg6', 'OPC', 'PPC2', 'Cem3', 'Cem4', 'Fly Ash'],
-      keys: ['agg5', 'agg6', 'opc', 'ppc2', 'cem3', 'cem4', 'flyAsh'],
+      sub: ['OPC', 'PPC2', 'Cem3', 'Cem4', 'FLY ASH'],
+      keys: ['opc', 'ppc2', 'cem3', 'cem4', 'flyAsh'],
     },
     {
       label: 'Water / Ice',
@@ -177,6 +178,20 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
   const colW2 = W / totalCols;
   const hdrH = 14;
   const rowH2 = 11;
+
+  // Track used keys to show "Extra" fields later
+  const handledKeys = new Set([
+    'batchNumber', 'batcherName', 'recipeCode', 'recipeName',
+    'truckNumber', 'truckDriver', 'plantSerialNumber', 'orderedQuantity',
+    'productionQuantity', 'adjQuantity', 'withThisLoad', 'mixerCapacity',
+    'batchSize', 'orderNumber', 'site', 'batches'
+  ]);
+  groups.forEach(g => {
+    g.keys.forEach(k => {
+      handledKeys.add(k);
+      handledKeys.add(`target_${k}`);
+    });
+  });
 
   // Group header row
   let cx = LEFT;
@@ -198,49 +213,128 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
   y += hdrH;
 
   // ── Recipe targets row ──────────────────────────────────────────────
-  // Full-width label for "Recipe targets in Kgs."
   doc
     .font('Helvetica-Bold')
     .fontSize(6.5)
-    .fillColor('#333')
-    .text('Recipe targets in Kgs.', LEFT, y + 2, { width: W });
+    .fillColor('#111')
+    .text('Recipe targets in Kgs.', LEFT, y + 1, { width: W });
 
-  // Draw empty target cells
   cx = LEFT;
   groups.forEach((g) => {
     g.keys.forEach((k) => {
-      const target = val(`target_${k}`, val(k, '0'));
-      cell(target, cx, y, colW2, rowH2, { align: 'center', size: 6.5 });
+      const target = val(`target_${k}`, '0');
+      cell(target, cx, y, colW2, rowH2, { align: 'center', size: 6.5, bold: true });
       cx += colW2;
     });
   });
   y += rowH2;
 
-  // ── Actual batch value rows (from mixDesignData) ─────────────────────
+  // Long header text matching image
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(6.5)
+    .fillColor('#111')
+    .text('Target and Actual value with moisture correction / absorption in % and other corrections in Kgs.', LEFT, y + 2, { width: W });
+  y += rowH2;
+
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(6)
+    .fillColor('#111')
+    .text('Mass of Recipe targets in Kgs.', LEFT + W - 150, y + 1, { width: 150, align: 'right' });
+  y += 8;
+
+  // ── Actual batch value rows ─────────────────────────────────────────
   const batchRows = mix.batches;
   let rowsData = [];
 
   if (Array.isArray(batchRows) && batchRows.length > 0) {
     rowsData = batchRows;
   } else {
-    // Build a single row from flat keys as fallback
+    // Build a single row from flat keys
     const row = {};
     groups.forEach((g) => g.keys.forEach((k) => { row[k] = val(k, ''); }));
-    rowsData = [row];
+    if (Object.values(row).some(v => v !== '')) {
+      rowsData = [row];
+    }
   }
 
-  // Print up to 12 batch rows
-  rowsData.slice(0, 12).forEach((bRow) => {
+  // Each data block in the image has 4 rows.
+  // We'll render each entry in rowsData as a 4-row block.
+  // Row 1: Target (from val(`target_${k}`))
+  // Row 2: Actual (from bRow[k])
+  // Row 3: Correction 1 (empty for now or from bRow[`corr1_${k}`])
+  // Row 4: Correction 2 (empty for now or from bRow[`corr2_${k}`])
+  
+  rowsData.slice(0, 10).forEach((bRow) => {
+    // Row 1: Targets for this block
     cx = LEFT;
     groups.forEach((g) => {
       g.keys.forEach((k) => {
-        const v = bRow[k] !== undefined ? String(bRow[k]) : '';
+        const v = val(`target_${k}`, '0');
         cell(v, cx, y, colW2, rowH2, { align: 'center', size: 6 });
         cx += colW2;
       });
     });
     y += rowH2;
+
+    // Row 2: Actuals for this block
+    cx = LEFT;
+    groups.forEach((g) => {
+      g.keys.forEach((k) => {
+        const v = bRow[k] !== undefined ? String(bRow[k]) : '';
+        cell(v, cx, y, colW2, rowH2, { align: 'center', size: 6, bold: true });
+        cx += colW2;
+      });
+    });
+    y += rowH2;
+
+    // Row 3: Empty Correction row
+    cx = LEFT;
+    groups.forEach((g) => {
+      g.keys.forEach(() => {
+        cell('', cx, y, colW2, rowH2, { align: 'center', size: 6 });
+        cx += colW2;
+      });
+    });
+    y += rowH2;
+
+    // Row 4: Empty Correction row
+    cx = LEFT;
+    groups.forEach((g) => {
+      g.keys.forEach(() => {
+        cell('', cx, y, colW2, rowH2, { align: 'center', size: 6 });
+        cx += colW2;
+      });
+    });
+    y += rowH2;
+
+    y += 2; // small gap between blocks
   });
+
+  // ── Extra Fields (Custom Data) ──────────────────────────────────────
+  const extraFields = Object.entries(mix).filter(([k]) => !handledKeys.has(k));
+  if (extraFields.length > 0) {
+    y += 10;
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#333').text('Additional Custom Data', LEFT, y);
+    y += 12;
+    
+    let ex = LEFT;
+    extraFields.forEach(([k, v]) => {
+      if (typeof v === 'object') return; // skip nested batches etc
+      const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase();
+      const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
+      
+      doc.font('Helvetica-Bold').fontSize(7).text(`${capitalized}:`, ex, y, { width: 80 });
+      doc.font('Helvetica').fontSize(7).text(String(v), ex + 85, y, { width: 100 });
+      
+      ex += 200;
+      if (ex > LEFT + W - 150) {
+        ex = LEFT;
+        y += 10;
+      }
+    });
+  }
 
   // ── Footer ──────────────────────────────────────────────────────────
   const footerY = doc.page.height - 40;

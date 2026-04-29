@@ -98,13 +98,13 @@ export default function L4Dispatches() {
       </div>
 
       {/* Action hint banner */}
-      {data.filter((d) => d.status === 'sale_authorized').length > 0 && (
+      {data.filter((d) => d.status === 'sale_authorized' || (d.salesOrder?.status === 'closed' && d.status === 'dispatched')).length > 0 && (
         <div className="mb-4 flex items-center gap-3 rounded-xl bg-brand-50 border border-brand-100 p-3 text-sm text-brand-800">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
           </svg>
           <span>
-            <strong>{data.filter((d) => d.status === 'sale_authorized').length}</strong> dispatch(es) are sale-authorized and ready to invoice.{' '}
+            <strong>{data.filter((d) => d.status === 'sale_authorized' || (d.salesOrder?.status === 'closed' && d.status === 'dispatched')).length}</strong> dispatch(es) are ready to invoice.{' '}
             <Link to="/l4/invoices" className="font-semibold underline">
               Go to Invoices →
             </Link>
@@ -150,8 +150,8 @@ export default function L4Dispatches() {
                   Batchsheet
                 </Link>
 
-                {/* Sale authorized → can generate invoice */}
-                {d.status === 'sale_authorized' && (
+                {/* Sale authorized OR Closed SO → can generate invoice */}
+                {(d.status === 'sale_authorized' || (d.salesOrder?.status === 'closed' && d.status === 'dispatched')) && (
                   <Link
                     to="/l4/invoices"
                     className="btn-primary text-xs"
@@ -159,9 +159,9 @@ export default function L4Dispatches() {
                     Generate Invoice →
                   </Link>
                 )}
-
-                {/* Dispatched → waiting for L2 auth */}
-                {d.status === 'dispatched' && (
+                
+                {/* Dispatched AND NO closed SO → waiting for L2 auth */}
+                {d.status === 'dispatched' && d.salesOrder?.status !== 'closed' && (
                   <div className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 border border-amber-200">
                     Awaiting L2 Sale Auth
                   </div>

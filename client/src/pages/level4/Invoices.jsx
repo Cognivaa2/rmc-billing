@@ -66,11 +66,7 @@ export default function L4Invoices() {
           showRateOnInvoice: showRate,
           idempotencyKey: newIdempotencyKey(),
         });
-        const full = await invoices.get(created._id);
-        downloadInvoicePdf(
-          { invoice: full, client: full.client, dispatch: full.dispatch, grade: full.grade, companySettings: settings },
-          `${full.invoiceNumber}.pdf`,
-        );
+        window.open(invoices.pdfUrl(created._id), '_blank');
         qc.invalidateQueries({ queryKey: ['invoices'] });
         qc.invalidateQueries({ queryKey: ['dispatches'] });
         return;
@@ -107,12 +103,16 @@ export default function L4Invoices() {
   };
 
   const downloadExisting = async (inv) => {
-    const full = await invoices.get(inv._id);
-    const clientDoc = await clients.get(full.client?._id || full.client);
-    downloadInvoicePdf(
-      { invoice: full, client: clientDoc, dispatch: full.dispatch, grade: full.grade, companySettings: settings },
-      `${full.invoiceNumber}.pdf`,
-    );
+    if (navigator.onLine) {
+      window.open(invoices.pdfUrl(inv._id), '_blank');
+    } else {
+      const full = await invoices.get(inv._id);
+      const clientDoc = await clients.get(full.client?._id || full.client);
+      downloadInvoicePdf(
+        { invoice: full, client: clientDoc, dispatch: full.dispatch, grade: full.grade, companySettings: settings },
+        `${full.invoiceNumber}.pdf`,
+      );
+    }
   };
 
   const activeNumbersLeft = blocks

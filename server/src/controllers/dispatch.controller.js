@@ -37,7 +37,18 @@ const populateDispatch = (q) =>
 export const listDispatches = asyncHandler(async (req, res) => {
   const { status, client, from, to, salesOrder } = req.query;
   const filter = {};
-  if (status) filter.status = status;
+  if (status) {
+    if (status === 'sale_authorized') {
+      const closedSos = await SalesOrder.find({ status: 'closed' }).select('_id').lean();
+      const closedSoIds = closedSos.map((s) => s._id);
+      filter.$or = [
+        { status: 'sale_authorized' },
+        { salesOrder: { $in: closedSoIds }, status: 'dispatched' },
+      ];
+    } else {
+      filter.status = status;
+    }
+  }
   if (client) filter.client = client;
   if (salesOrder) filter.salesOrder = salesOrder;
   if (from || to) {
