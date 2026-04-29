@@ -8,7 +8,17 @@ import { useState } from 'react';
 export default function L1Users() {
   const qc = useQueryClient();
   const [showNew, setShowNew] = useState(false);
-  const { data = [] } = useQuery({ queryKey: ['users'], queryFn: () => users.list() });
+  const [page, setPage] = useState(1);
+
+  const { data } = useQuery({
+    queryKey: ['users', page],
+    queryFn: () => users.list({ page, limit: 10 }),
+    placeholderData: (prev) => prev,
+  });
+
+  const userList = data?.users || [];
+  const totalPages = data?.totalPages || 1;
+
   const { register, handleSubmit, reset } = useForm({ defaultValues: { level: 3 } });
   const create = useMutation({
     mutationFn: (d) => users.create({ ...d, level: Number(d.level) }),
@@ -65,40 +75,71 @@ export default function L1Users() {
       )}
 
       <div className="card">
-        <table className="table-clean">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Level</th>
-              <th>Status</th>
-              <th>Last login</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((u) => (
-              <tr key={u.id}>
-                <td className="font-medium">{u.name}</td>
-                <td>{u.email}</td>
-                <td><span className="badge-blue">L{u.level}</span></td>
-                <td>
-                  {u.status === 'active' ? (
-                    <span className="badge-green">active</span>
-                  ) : (
-                    <span className="badge-gray">disabled</span>
-                  )}
-                </td>
-                <td className="text-slate-500">{fmtDateTime(u.lastLoginAt)}</td>
-                <td className="text-right">
-                  <button className="text-xs text-brand-600 hover:underline" onClick={() => toggleStatus.mutate(u)}>
-                    {u.status === 'active' ? 'Disable' : 'Enable'}
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table-clean min-w-[800px] md:min-w-full">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Level</th>
+                <th>Status</th>
+                <th>Last login</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {userList.map((u) => (
+                <tr key={u.id}>
+                  <td className="font-medium whitespace-nowrap">{u.name}</td>
+                  <td className="whitespace-nowrap">{u.email}</td>
+                  <td><span className="badge-blue">L{u.level}</span></td>
+                  <td>
+                    {u.status === 'active' ? (
+                      <span className="badge-green">active</span>
+                    ) : (
+                      <span className="badge-gray">disabled</span>
+                    )}
+                  </td>
+                  <td className="text-slate-500 whitespace-nowrap">{fmtDateTime(u.lastLoginAt)}</td>
+                  <td className="text-right">
+                    <button className="text-xs text-brand-600 hover:underline" onClick={() => toggleStatus.mutate(u)}>
+                      {u.status === 'active' ? 'Disable' : 'Enable'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {userList.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="p-8 text-center text-slate-400">No users found</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 gap-4">
+          <div className="text-xs text-slate-500">
+            Page <span className="font-medium text-slate-700">{page}</span> of{' '}
+            <span className="font-medium text-slate-700">{totalPages}</span>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              className="btn-secondary flex-1 sm:flex-none py-2 px-4 text-xs disabled:opacity-50"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <button
+              className="btn-secondary flex-1 sm:flex-none py-2 px-4 text-xs disabled:opacity-50"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

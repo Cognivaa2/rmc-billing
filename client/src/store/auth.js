@@ -29,4 +29,5 @@ export const useAuth = create((set, get) => ({
   },
 
   isLevel: (lvl) => get().user?.level === lvl,
+  setAuth: (user) => set({ user }),
 }));

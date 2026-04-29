@@ -10,8 +10,10 @@ export default function L2ClientDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
   const [tab, setTab] = useState('kyc');
-  const [page, setPage] = useState(1);
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [sitePage, setSitePage] = useState(1);
   const [editingPayment, setEditingPayment] = useState(null);
+  const [editingSite, setEditingSite] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   const { data: client, isLoading } = useQuery({
@@ -20,17 +22,18 @@ export default function L2ClientDetail() {
   });
 
   const { data: paymentsData = { payments: [], totalPages: 1, page: 1 } } = useQuery({
-    queryKey: ['payments', id, page],
-    queryFn: () => payments.list({ client: id, page, limit: 6 }),
+    queryKey: ['payments', id, paymentPage],
+    queryFn: () => payments.list({ client: id, page: paymentPage, limit: 6 }),
     enabled: tab === 'payments',
   });
   const paymentList = paymentsData.payments || [];
 
-  const { data: sitesList = [] } = useQuery({
-    queryKey: ['sites', id],
-    queryFn: () => sites.list({ client: id }),
+  const { data: sitesData = { sites: [], totalPages: 1, page: 1 } } = useQuery({
+    queryKey: ['sites', id, sitePage],
+    queryFn: () => sites.list({ client: id, page: sitePage, limit: 6 }),
     enabled: tab === 'sites',
   });
+  const sitesList = sitesData.sites || [];
 
   const { register: regKyc, handleSubmit: handleKyc, reset: resetKyc } = useForm();
   const { register: regPay, handleSubmit: handlePay, reset: resetPay } = useForm({
@@ -106,6 +109,15 @@ export default function L2ClientDetail() {
     mutationFn: (d) => sites.create({ ...d, client: id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sites', id] });
+      resetSite();
+    },
+  });
+
+  const updateSite = useMutation({
+    mutationFn: (d) => sites.update(editingSite._id, d),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sites', id] });
+      setEditingSite(null);
       resetSite();
     },
   });
@@ -438,15 +450,15 @@ export default function L2ClientDetail() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                  onClick={() => setPaymentPage((p) => Math.max(1, p - 1))}
+                  disabled={paymentPage === 1}
                   className="btn-secondary text-sm py-1 px-3"
                 >
                   Previous
                 </button>
                 <button
-                  onClick={() => setPage((p) => Math.min(paymentsData.totalPages || 1, p + 1))}
-                  disabled={page >= (paymentsData.totalPages || 1)}
+                  onClick={() => setPaymentPage((p) => Math.min(paymentsData.totalPages || 1, p + 1))}
+                  disabled={paymentPage >= (paymentsData.totalPages || 1)}
                   className="btn-secondary text-sm py-1 px-3"
                 >
                   Next
@@ -461,52 +473,113 @@ export default function L2ClientDetail() {
       {tab === 'sites' && (
         <div className="space-y-5">
           <div className="card card-body">
-            <div className="mb-4 font-semibold text-slate-700">Add New Site</div>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="font-semibold text-slate-700">
+                {editingSite ? 'Edit Site' : 'Add New Site'}
+              </div>
+              {editingSite && (
+                <button
+                  onClick={() => {
+                    setEditingSite(null);
+                    resetSite({ siteName: '', siteAddress: '' });
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
             <form
               className="flex flex-wrap items-end gap-3"
-              onSubmit={handleSite((d) => createSite.mutate(d))}
+              onSubmit={handleSite((d) => {
+                if (editingSite) {
+                  updateSite.mutate(d);
+                } else {
+                  createSite.mutate(d);
+                }
+              })}
             >
-              <div>
+              <div className="flex-1 min-w-[200px]">
                 <label className="label">Site Name *</label>
                 <input className="input" required {...regSite('siteName')} />
               </div>
-              <div>
+              <div className="flex-[2] min-w-[300px]">
                 <label className="label">Address</label>
                 <input className="input" {...regSite('siteAddress')} />
               </div>
-              <button className="btn-primary" disabled={createSite.isPending}>
-                {createSite.isPending ? 'Adding…' : 'Add Site'}
-              </button>
+              <div className="flex gap-3">
+                <button className="btn-primary" disabled={createSite.isPending || updateSite.isPending}>
+                  {createSite.isPending || updateSite.isPending ? 'Saving…' : editingSite ? 'Update Site' : 'Add Site'}
+                </button>
+              </div>
             </form>
           </div>
 
           <div className="card overflow-x-auto">
             <div className="border-b border-slate-100 px-5 py-4 font-semibold">
-              Sites ({sitesList.length})
+              Sites ({sitesData.total || 0})
             </div>
             <table className="table-clean min-w-[600px]">
               <thead>
                 <tr>
                   <th>Site Name</th>
                   <th>Address</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {sitesList.map((s) => (
                   <tr key={s._id}>
-                    <td className="font-medium">{s.siteName}</td>
+                    <td className="font-medium text-slate-800">{s.siteName}</td>
                     <td className="text-slate-500">{s.siteAddress || '—'}</td>
+                    <td className="text-right">
+                      <button
+                        onClick={() => {
+                          setEditingSite(s);
+                          resetSite({
+                            siteName: s.siteName,
+                            siteAddress: s.siteAddress || '',
+                          });
+                        }}
+                        className="text-brand-600 hover:text-brand-700 font-medium text-xs"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {sitesList.length === 0 && (
                   <tr>
-                    <td colSpan="2" className="p-6 text-center text-sm text-slate-400">
+                    <td colSpan="3" className="p-6 text-center text-sm text-slate-400">
                       No sites yet
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+
+            {/* Pagination UI */}
+            <div className="flex flex-wrap items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6 gap-3">
+              <div className="text-sm text-slate-500">
+                Page {sitesData.page || 1} of {sitesData.totalPages || 1}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSitePage((p) => Math.max(1, p - 1))}
+                  disabled={sitePage === 1}
+                  className="btn-secondary text-sm py-1 px-3"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setSitePage((p) => Math.min(sitesData.totalPages || 1, p + 1))}
+                  disabled={sitePage >= (sitesData.totalPages || 1)}
+                  className="btn-secondary text-sm py-1 px-3"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -10,77 +10,22 @@ export default function L1Clients() {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
-  const [showNew, setShowNew] = useState(false);
   const { data = { clients: [], totalPages: 1, page: 1 } } = useQuery({
     queryKey: ['clients', q, page],
     queryFn: () => clients.list({ q: q || undefined, page, limit: 6 }),
   });
   const clientList = data.clients || [];
 
-  const { register, handleSubmit, reset } = useForm();
-  const create = useMutation({
-    mutationFn: (d) => clients.create(d),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['clients'] });
-      setShowNew(false);
-      reset();
-    },
-  });
+
 
   return (
     <>
       <PageHeader
         title="Clients"
         subtitle="Master database — permanent and non-deletable."
-        actions={
-          <button className="btn-primary" onClick={() => setShowNew((v) => !v)}>
-            {showNew ? 'Cancel' : 'New Client'}
-          </button>
-        }
       />
 
-      {showNew && (
-        <form
-          className="card card-body mb-5 grid grid-cols-1 gap-3 md:grid-cols-3"
-          onSubmit={handleSubmit((d) => create.mutate({
-            ...d,
-            taxInformation: {
-              gstin: d.gstin || undefined,
-              pan: d.pan || undefined,
-            },
-          }))}
-        >
-          <div>
-            <label className="label">Name *</label>
-            <input className="input" required {...register('clientName')} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="label">Office Address *</label>
-            <input className="input" required {...register('officeAddress')} />
-          </div>
-          <div>
-            <label className="label">Contact Number *</label>
-            <input className="input" required {...register('contactNumber')} />
-          </div>
-          <div>
-            <label className="label">Email</label>
-            <input className="input" type="email" {...register('email')} />
-          </div>
-          <div>
-            <label className="label">GSTIN</label>
-            <input className="input" {...register('gstin')} />
-          </div>
-          <div>
-            <label className="label">PAN</label>
-            <input className="input" {...register('pan')} />
-          </div>
-          <div className="md:col-span-3 flex justify-end">
-            <button className="btn-primary" disabled={create.isPending}>
-              {create.isPending ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </form>
-      )}
+
 
       <div className="card">
         <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">

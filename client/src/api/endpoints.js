@@ -8,7 +8,10 @@ export const auth = {
 };
 
 export const users = {
-  list: (params) => api.get('/users', { params }).then((r) => r.data.users),
+  list: (params) => api.get('/users', { params }).then((r) => {
+    if (params && params.page !== undefined) return r.data;
+    return r.data.users;
+  }),
   create: (data) => api.post('/users', data).then((r) => r.data.user),
   update: (id, data) => api.patch(`/users/${id}`, data).then((r) => r.data.user),
 };
@@ -25,8 +28,12 @@ export const clients = {
 };
 
 export const sites = {
-  list: (params) => api.get('/sites', { params }).then((r) => r.data.sites),
+  list: (params) => api.get('/sites', { params }).then((r) => {
+    if (params && params.page !== undefined) return r.data;
+    return r.data.sites;
+  }),
   create: (data) => api.post('/sites', data).then((r) => r.data.site),
+  update: (id, data) => api.patch(`/sites/${id}`, data).then((r) => r.data.site),
 };
 
 export const grades = {

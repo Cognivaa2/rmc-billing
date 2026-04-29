@@ -12,11 +12,25 @@ export const siteSchema = z.object({
 });
 
 export const listSites = asyncHandler(async (req, res) => {
-  const { client } = req.query;
+  const { client, page = 1, limit = 10 } = req.query;
   const filter = {};
   if (client) filter.client = client;
-  const sites = await Site.find(filter).populate('client', 'clientName').sort({ createdAt: -1 });
-  res.json({ sites });
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const total = await Site.countDocuments(filter);
+  const sites = await Site.find(filter)
+    .populate('client', 'clientName')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+  res.json({
+    sites,
+    total,
+    page: Number(page),
+    limit: Number(limit),
+    totalPages: Math.ceil(total / Number(limit)),
+  });
 });
 
 export const createSite = asyncHandler(async (req, res) => {

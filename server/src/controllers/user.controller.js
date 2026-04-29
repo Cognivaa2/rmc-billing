@@ -21,13 +21,26 @@ export const updateUserSchema = z.object({
 });
 
 export const listUsers = asyncHandler(async (req, res) => {
-  const { level, status, q } = req.query;
+  const { level, status, q, page = 1, limit = 10 } = req.query;
   const filter = {};
   if (level) filter.level = Number(level);
   if (status) filter.status = status;
   if (q) filter.$or = [{ name: new RegExp(q, 'i') }, { email: new RegExp(q, 'i') }];
-  const users = await User.find(filter).sort({ createdAt: -1 });
-  res.json({ users: users.map((u) => u.toPublic()) });
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const total = await User.countDocuments(filter);
+  const users = await User.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+  res.json({
+    users: users.map((u) => u.toPublic()),
+    total,
+    page: Number(page),
+    limit: Number(limit),
+    totalPages: Math.ceil(total / Number(limit)),
+  });
 });
 
 export const createUser = asyncHandler(async (req, res) => {

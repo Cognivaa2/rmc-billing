@@ -31,7 +31,6 @@ const NAV_BY_LEVEL = {
     { to: '/l4/dispatches', label: 'Dispatches', icon: 'truck' },
     { to: '/l4/invoices', label: 'Invoices', icon: 'receipt' },
     { to: '/l4/batchsheets', label: 'Batchsheets', icon: 'doc' },
-    { to: '/l4/templates', label: 'Templates', icon: 'layers' },
   ],
 };
 

@@ -17,7 +17,7 @@ export default function Register() {
     try {
       const res = await auth.register(data.name, data.email, data.password);
       setAuth(res.user);
-      navigate('/');
+      navigate('/l1');
     } catch (e) {
       const errData = e.response?.data;
       // Backend sends { error: "string message", details?: {...} }
