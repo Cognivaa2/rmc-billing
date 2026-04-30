@@ -94,10 +94,10 @@ export const createInvoice = asyncHandler(async (req, res) => {
   const dispatch = await DispatchForm.findById(req.body.dispatch).populate('salesOrder order');
   if (!dispatch) throw ApiError.notFound('Dispatch not found');
 
-  // New Rule: If linked to a Sales Order, it MUST be closed.
-  if (dispatch.salesOrder && dispatch.salesOrder.status !== 'closed') {
+  // Enforce Workflow: Dispatch must be sale_authorized or beyond
+  if (dispatch.status === 'dispatched' || dispatch.status === 'pending') {
     throw ApiError.badRequest(
-      `Invoices can only be generated after the Sales Order (${dispatch.salesOrder.soNumber}) is CLOSED by Level 2.`,
+      `Invoices can only be generated after the dispatch is authorized by Level 2. Current status: ${dispatch.status}`,
     );
   }
 
@@ -256,9 +256,9 @@ export const syncOfflineInvoices = asyncHandler(async (req, res) => {
       continue;
     }
 
-    // SO closure check for sync
-    if (dispatch.salesOrder && dispatch.salesOrder.status !== 'closed') {
-      results.push({ idempotencyKey: payload.idempotencyKey, status: 'so_not_closed' });
+    // Enforce Workflow: Dispatch must be sale_authorized or beyond
+    if (dispatch.status === 'dispatched' || dispatch.status === 'pending') {
+      results.push({ idempotencyKey: payload.idempotencyKey, status: 'not_authorized' });
       continue;
     }
 

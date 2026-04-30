@@ -6,13 +6,17 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { KpiCard } from '../../components/KpiCard.jsx';
 import { statusBadge, fmtDateTime } from '../../utils/format.js';
 
+const getNormalizedStatus = (status) => {
+  if (['SALE_AUTHORIZED', 'INVOICED', 'CLOSED'].includes(status)) return 'CLOSED';
+  return status;
+};
+
 const STATUS_LABEL = {
   PENDING: 'Pending',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   DISPATCHED: 'Dispatched',
-  SALE_AUTHORIZED: 'Sale Auth.',
-  INVOICED: 'Invoiced',
+  CLOSED: 'Closed',
 };
 
 const STATUS_BADGE = {
@@ -20,8 +24,7 @@ const STATUS_BADGE = {
   APPROVED: 'bg-blue-50 text-blue-700 border border-blue-200',
   REJECTED: 'bg-red-50 text-red-700 border border-red-200',
   DISPATCHED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
-  SALE_AUTHORIZED: 'bg-violet-50 text-violet-700 border border-violet-200',
-  INVOICED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  CLOSED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
 };
 
 export default function L3Dashboard() {
@@ -42,8 +45,9 @@ export default function L3Dashboard() {
   const totalPages = data?.totalPages || 1;
 
   const counts = mineAll.reduce((acc, o) => {
+    const s = getNormalizedStatus(o.status);
     acc.ALL = (acc.ALL || 0) + 1;
-    acc[o.status] = (acc[o.status] || 0) + 1;
+    acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, { ALL: 0 });
 
@@ -61,8 +65,8 @@ export default function L3Dashboard() {
 
       {/* KPI cards — 2-col on mobile, 4-col on desktop */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <KpiCard title="Total Orders" value={counts.ALL || 0} to="/l3/orders" state={{ filter: 'ALL' }} />
         <KpiCard title="Pending" value={counts.PENDING || 0} accent to="/l3/orders" state={{ filter: 'PENDING' }} />
+        <KpiCard title="Total Orders" value={counts.ALL || 0} to="/l3/orders" state={{ filter: 'ALL' }} />
         <KpiCard title="Approved" value={counts.APPROVED || 0} to="/l3/orders" state={{ filter: 'APPROVED' }} />
         <KpiCard title="Rejected" value={counts.REJECTED || 0} to="/l3/orders" state={{ filter: 'REJECTED' }} />
       </div>
@@ -91,8 +95,8 @@ export default function L3Dashboard() {
                 <p className="text-xs text-slate-500 truncate">{o.client?.clientName} · {o.quantity} m³</p>
                 <p className="text-xs text-slate-400 mt-0.5">{fmtDateTime(o.createdAt)}</p>
               </div>
-              <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[o.status] || 'bg-slate-100 text-slate-600'}`}>
-                {STATUS_LABEL[o.status] || o.status}
+              <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[getNormalizedStatus(o.status)] || 'bg-slate-100 text-slate-600'}`}>
+                {STATUS_LABEL[getNormalizedStatus(o.status)] || o.status}
               </span>
             </div>
           ))}
@@ -116,7 +120,9 @@ export default function L3Dashboard() {
                 <td>{o.client?.clientName}</td>
                 <td>{o.quantity} m³</td>
                 <td>
-                  <span className={statusBadge(o.status)}>{STATUS_LABEL[o.status] || o.status}</span>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[getNormalizedStatus(o.status)] || 'bg-slate-100 text-slate-600'}`}>
+                    {STATUS_LABEL[getNormalizedStatus(o.status)] || o.status}
+                  </span>
                 </td>
                 <td className="text-slate-500">{fmtDateTime(o.createdAt)}</td>
               </tr>
@@ -131,7 +137,7 @@ export default function L3Dashboard() {
         </table>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {totalPages >= 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
             <p className="text-sm text-slate-500">
               Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>

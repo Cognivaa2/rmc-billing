@@ -58,7 +58,7 @@ export const orders = {
   update: (id, data) => api.patch(`/orders/${id}`, data).then((r) => r.data.order),
   approve: (id) => api.patch(`/orders/${id}/approve`).then((r) => r.data.order),
   reject: (id, reason) => api.patch(`/orders/${id}/reject`, { reason }).then((r) => r.data.order),
-  authorizeSale: (id) => api.patch(`/orders/${id}/authorize-sale`).then((r) => r.data.order),
+  authorizeSale: (id, data) => api.patch(`/orders/${id}/authorize-sale`, data).then((r) => r.data.order),
 };
 
 export const dispatches = {

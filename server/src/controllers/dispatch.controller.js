@@ -35,20 +35,42 @@ const populateDispatch = (q) =>
 // ── Controllers ───────────────────────────────────────────────────────────────
 
 export const listDispatches = asyncHandler(async (req, res) => {
-  const { status, client, from, to, salesOrder } = req.query;
+  const { status, client, from, to, salesOrder, page, limit } = req.query;
   const filter = {};
+  const andClauses = [];
+
+  // Filter by order (supports both direct order link and via Sales Orders)
+  if (req.query.order) {
+    const sos = await SalesOrder.find({ sourceOrder: req.query.order }).select('_id').lean();
+    andClauses.push({
+      $or: [
+        { order: req.query.order },
+        { salesOrder: { $in: sos.map((s) => s._id) } },
+      ]
+    });
+  }
+
+  // Filter by status
   if (status) {
     if (status === 'sale_authorized') {
       const closedSos = await SalesOrder.find({ status: 'closed' }).select('_id').lean();
       const closedSoIds = closedSos.map((s) => s._id);
-      filter.$or = [
-        { status: 'sale_authorized' },
-        { salesOrder: { $in: closedSoIds }, status: 'dispatched' },
-      ];
+      andClauses.push({
+        $or: [
+          { status: 'sale_authorized' },
+          { salesOrder: { $in: closedSoIds }, status: 'dispatched' },
+        ]
+      });
+    } else if (status === 'dispatched') {
+      const closedSos = await SalesOrder.find({ status: 'closed' }).select('_id').lean();
+      const closedSoIds = closedSos.map((s) => s._id);
+      andClauses.push({ status: 'dispatched' });
+      andClauses.push({ salesOrder: { $nin: closedSoIds } });
     } else {
-      filter.status = status;
+      andClauses.push({ status });
     }
   }
+
   if (client) filter.client = client;
   if (salesOrder) filter.salesOrder = salesOrder;
   if (from || to) {
@@ -56,8 +78,26 @@ export const listDispatches = asyncHandler(async (req, res) => {
     if (from) filter.dispatchDateTime.$gte = new Date(from);
     if (to) filter.dispatchDateTime.$lte = new Date(to);
   }
-  const dispatches = await populateDispatch(DispatchForm.find(filter)).sort({ createdAt: -1 });
-  res.json({ dispatches });
+
+  if (andClauses.length > 0) {
+    filter.$and = andClauses;
+  }
+  
+  let query = DispatchForm.find(filter).sort({ createdAt: -1 });
+  let total = await DispatchForm.countDocuments(filter);
+  let totalPages = 1;
+  let currentPage = 1;
+
+  if (page || limit) {
+    currentPage = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (currentPage - 1) * limitNum;
+    query = query.skip(skip).limit(limitNum);
+    totalPages = Math.ceil(total / limitNum);
+  }
+
+  const dispatches = await populateDispatch(query);
+  res.json({ dispatches, total, page: currentPage, totalPages });
 });
 
 export const getDispatch = asyncHandler(async (req, res) => {
@@ -94,6 +134,7 @@ export const createDispatch = asyncHandler(async (req, res) => {
     site = so.site;
     gradeId = so.grade?._id || so.grade;
     linkedSoId = so._id;
+    linkedOrderId = so.sourceOrder;
 
     // Update SO quantities
     so.dispatchedQuantity += quantity;

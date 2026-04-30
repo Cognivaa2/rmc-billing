@@ -31,15 +31,21 @@ export const createBatchsheet = asyncHandler(async (req, res) => {
   const dispatch = await DispatchForm.findById(req.body.dispatch).populate('salesOrder');
   if (!dispatch) throw ApiError.notFound('Dispatch not found');
 
-  // Enforce SO closure rule
-  if (dispatch.salesOrder && dispatch.salesOrder.status !== 'closed') {
-    throw ApiError.badRequest('Batchsheets can only be generated after the Sales Order is CLOSED by Level 2.');
+  // Enforce Workflow: Batchsheet requires the dispatch to be sale_authorized
+  if (dispatch.status === 'dispatched') {
+    throw ApiError.badRequest('Batchsheets can only be generated after the sale is AUTHORIZED by Level 2.');
   }
 
   const batchsheet = await Batchsheet.create({
     ...req.body,
     generatedByLevel4: req.user.id,
   });
+
+  if (dispatch.status === 'sale_authorized') {
+    dispatch.status = 'batchsheet';
+    await dispatch.save();
+  }
+
   res.status(201).json({ batchsheet });
 });
 
@@ -54,10 +60,10 @@ export const updateBatchsheet = asyncHandler(async (req, res) => {
   });
   if (!batchsheet) throw ApiError.notFound();
 
-  // Enforce SO closure rule on update as well
+  // Enforce Workflow on update as well
   const dispatch = batchsheet.dispatch;
-  if (dispatch?.salesOrder && dispatch.salesOrder.status !== 'closed') {
-    throw ApiError.badRequest('Batchsheet values can only be filled/updated after the Sales Order is CLOSED by Level 2.');
+  if (dispatch && dispatch.status === 'dispatched') {
+    throw ApiError.badRequest('Batchsheet values can only be filled/updated after the sale is AUTHORIZED by Level 2.');
   }
   
   // Update mixDesignData

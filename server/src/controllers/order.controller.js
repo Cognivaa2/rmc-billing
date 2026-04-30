@@ -18,7 +18,7 @@ export const createOrderSchema = z.object({
 const populateOrder = (q) =>
   q
     .populate('client', 'clientName creditStatus kycStatus')
-    .populate('site', 'siteName')
+    .populate('site', 'siteName siteAddress')
     .populate('createdByLevel3', 'name')
     .populate('approvedByLevel2', 'name')
     .populate('saleAuthorizedByLevel2', 'name');
@@ -118,22 +118,61 @@ export const rejectOrder = asyncHandler(async (req, res) => {
 export const authorizeSale = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) throw ApiError.notFound();
-  if (order.status !== ORDER_STATUS.DISPATCHED) {
+  if (!['DISPATCHED', 'SALE_AUTHORIZED'].includes(order.status)) {
     throw ApiError.badRequest(
       `Sale can only be authorised from DISPATCHED state. Current: ${order.status}`,
     );
   }
-  order.status = ORDER_STATUS.SALE_AUTHORIZED;
-  order.saleAuthorizedByLevel2 = req.user.id;
-  order.saleAuthorizedAt = new Date();
-  await order.save();
-
-  // IMPORTANT: Also update the associated dispatches that are awaiting auth
+  const { dispatchIds } = req.body;
   const { DispatchForm } = await import('../models/DispatchForm.js');
-  await DispatchForm.updateMany(
-    { order: order._id, status: 'dispatched' },
-    { $set: { status: 'sale_authorized' } }
-  );
+  const { SalesOrder } = await import('../models/SalesOrder.js');
+
+  let updateResult;
+
+  if (dispatchIds && dispatchIds.length > 0) {
+    // Direct update using selected dispatch IDs from the modal
+    updateResult = await DispatchForm.updateMany(
+      { _id: { $in: dispatchIds }, status: 'dispatched' },
+      { $set: { status: 'sale_authorized' } }
+    );
+    console.log(`[authorizeSale] Updated ${updateResult.modifiedCount} of ${dispatchIds.length} dispatches by ID`);
+  } else {
+    // Fallback: update ALL pending dispatches linked to this order (via direct or SO link)
+    const sos = await SalesOrder.find({ sourceOrder: order._id }).select('_id').lean();
+    const updateResult2 = await DispatchForm.updateMany(
+      {
+        $or: [
+          { order: order._id },
+          { salesOrder: { $in: sos.map((s) => s._id) } }
+        ],
+        status: 'dispatched'
+      },
+      { $set: { status: 'sale_authorized' } }
+    );
+    console.log(`[authorizeSale] Fallback updated ${updateResult2.modifiedCount} dispatches for order ${order.orderNumber}`);
+    updateResult = updateResult2;
+  }
+
+  // Check remaining pending dispatches across all SOs of this order
+  const sos = await SalesOrder.find({ sourceOrder: order._id }).select('_id').lean();
+  const remainingCount = await DispatchForm.countDocuments({
+    $or: [
+      { order: order._id },
+      { salesOrder: { $in: sos.map((s) => s._id) } }
+    ],
+    status: 'dispatched'
+  });
+
+  // Transition order status when ALL dispatches are authorized
+  if (remainingCount === 0) {
+    order.status = ORDER_STATUS.SALE_AUTHORIZED;
+    order.saleAuthorizedByLevel2 = req.user.id;
+    order.saleAuthorizedAt = new Date();
+    await order.save();
+    console.log(`[authorizeSale] Order ${order.orderNumber} fully authorized → SALE_AUTHORIZED`);
+  } else {
+    console.log(`[authorizeSale] ${remainingCount} dispatch(es) still pending for order ${order.orderNumber}`);
+  }
 
   await notifyLevels([4], {
     type: 'sale_authorized',
@@ -141,7 +180,7 @@ export const authorizeSale = asyncHandler(async (req, res) => {
     relatedEntity: { kind: 'Order', id: order._id },
   });
 
-  res.json({ order });
+  res.json({ order, updatedCount: updateResult?.modifiedCount || 0 });
 });
 
 export const updateOrderSchema = z.object({

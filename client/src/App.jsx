@@ -24,7 +24,6 @@ import L2ClientDetail from './pages/level2/ClientDetail.jsx';
 import L2Payments from './pages/level2/Payments.jsx';
 import L2Orders from './pages/level2/Orders.jsx';
 import L2SalesOrders from './pages/level2/SalesOrders.jsx';
-import L2Dispatches from './pages/level2/Dispatches.jsx';
 
 import L3Dashboard from './pages/level3/Dashboard.jsx';
 import L3NewOrder from './pages/level3/NewOrder.jsx';
@@ -77,7 +76,6 @@ export default function App() {
         <Route path="/l2/payments" element={<L2Payments />} />
         <Route path="/l2/orders" element={<L2Orders />} />
         <Route path="/l2/sales-orders" element={<L2SalesOrders />} />
-        <Route path="/l2/dispatches" element={<L2Dispatches />} />
       </Route>
 
       <Route element={<RequireAuth levels={[3]}><Layout /></RequireAuth>}>

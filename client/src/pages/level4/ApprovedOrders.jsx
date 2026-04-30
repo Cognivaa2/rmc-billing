@@ -35,7 +35,7 @@ function DispatchForm({ order, onDone }) {
       </div>
       <div className="md:col-span-2">
         <label className="label">Vehicle Number *</label>
-        <input className="input uppercase" required placeholder="MH12AB1234" {...register('vehicleNumber')} />
+        <input className="input uppercase" required placeholder="WB12AB1234" {...register('vehicleNumber')} />
       </div>
       <div className="flex items-end">
         <button className="btn-primary w-full" disabled={create.isPending}>

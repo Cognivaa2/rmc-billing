@@ -16,7 +16,7 @@ const dispatchSchema = new mongoose.Schema(
     filledByLevel4: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     status: {
       type: String,
-      enum: ['dispatched', 'sale_authorized', 'invoiced'],
+      enum: ['dispatched', 'sale_authorized', 'batchsheet', 'invoiced'],
       default: 'dispatched',
       index: true,
     },

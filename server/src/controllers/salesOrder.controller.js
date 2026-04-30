@@ -17,19 +17,34 @@ export const createSoSchema = z.object({
 });
 
 export const listSalesOrders = asyncHandler(async (req, res) => {
-  const { client, status, q } = req.query;
+  const { client, status, q, page, limit } = req.query;
   const filter = {};
   if (client) filter.client = client;
   if (status) filter.status = status;
   if (q) filter.soNumber = new RegExp(q, 'i');
-  const sos = await SalesOrder.find(filter)
+  
+  let query = SalesOrder.find(filter).sort({ createdAt: -1 });
+  let total = await SalesOrder.countDocuments(filter);
+  let totalPages = 1;
+  let currentPage = 1;
+
+  if (page || limit) {
+    currentPage = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (currentPage - 1) * limitNum;
+    query = query.skip(skip).limit(limitNum);
+    totalPages = Math.ceil(total / limitNum);
+  }
+
+  const sos = await query
     .populate('client', 'clientName creditStatus kycStatus')
     .populate('site', 'siteName')
     .populate('grade', 'gradeCode')
     .populate('createdByLevel2', 'name')
     .populate('closedByLevel2', 'name')
-    .sort({ createdAt: -1 });
-  res.json({ salesOrders: sos });
+    .populate('sourceOrder', 'orderNumber status');
+    
+  res.json({ salesOrders: sos, total, page: currentPage, totalPages });
 });
 
 export const getSalesOrder = asyncHandler(async (req, res) => {
@@ -58,16 +73,32 @@ export const closeSalesOrder = asyncHandler(async (req, res) => {
   const so = await SalesOrder.findById(req.params.id);
   if (!so) throw ApiError.notFound();
   if (so.status === 'closed') throw ApiError.badRequest('Sales Order already closed');
+
+  // Enforce Workflow: All dispatches must be invoiced before closing
+  const allDispatches = await DispatchForm.find({ salesOrder: so._id });
+  if (allDispatches.length > 0) {
+    const uninvoiced = allDispatches.filter(d => d.status !== 'invoiced');
+    if (uninvoiced.length > 0) {
+      throw ApiError.badRequest(
+        `Cannot close: ${uninvoiced.length} dispatch(es) have not been invoiced yet. Level 4 must generate invoices for all dispatches first.`
+      );
+    }
+  }
+
   so.status = 'closed';
   so.closedByLevel2 = req.user.id;
   so.closedAt = new Date();
   await so.save();
 
-  // ALSO: Mark all dispatches under this SO as sale_authorized so they can be invoiced
-  await DispatchForm.updateMany(
-    { salesOrder: so._id, status: 'dispatched' },
-    { status: 'sale_authorized' }
-  );
+  // If this SO originated from an Order, check if we should close the parent Order
+  if (so.sourceOrder) {
+    const { Order, ORDER_STATUS } = await import('../models/Order.js');
+    const allSos = await SalesOrder.find({ sourceOrder: so.sourceOrder });
+    const allClosed = allSos.every((s) => s.status === 'closed');
+    if (allClosed) {
+      await Order.findByIdAndUpdate(so.sourceOrder, { status: ORDER_STATUS.CLOSED });
+    }
+  }
 
   res.json({ salesOrder: so });
 });

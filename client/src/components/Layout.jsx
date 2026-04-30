@@ -19,7 +19,6 @@ const NAV_BY_LEVEL = {
     { to: '/l2/clients', label: 'Clients', icon: 'users' },
     { to: '/l2/orders', label: 'Orders', icon: 'star' },
     { to: '/l2/sales-orders', label: 'Sales Orders', icon: 'deal' },
-    { to: '/l2/dispatches', label: 'Dispatches', icon: 'truck' },
   ],
   3: [
     { to: '/l3', label: 'Dashboard', icon: 'grid' },
@@ -30,7 +29,7 @@ const NAV_BY_LEVEL = {
     { to: '/l4/sales-orders', label: 'Sales Orders', icon: 'deal' },
     { to: '/l4/dispatches', label: 'Dispatches', icon: 'truck' },
     { to: '/l4/invoices', label: 'Invoices', icon: 'receipt' },
-    { to: '/l4/batchsheets', label: 'Batchsheets', icon: 'doc' },
+    { to: '/l4/batchsheets', label: 'Batchsheets', icon: 'document' },
   ],
 };
 

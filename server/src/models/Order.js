@@ -7,6 +7,7 @@ export const ORDER_STATUS = Object.freeze({
   DISPATCHED: 'DISPATCHED',
   SALE_AUTHORIZED: 'SALE_AUTHORIZED',
   INVOICED: 'INVOICED',
+  CLOSED: 'CLOSED',
 });
 
 const orderSchema = new mongoose.Schema(

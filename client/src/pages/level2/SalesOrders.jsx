@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { salesOrders, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
@@ -118,15 +119,62 @@ function SoDispatchPanel({ soId }) {
   );
 }
 
+/* ─── Close Sale Button ─────────────────────────────────────────────── */
+function SoCloseButton({ so, onRequestClose }) {
+  const { data: soDispatches = [], isLoading } = useQuery({
+    queryKey: ['dispatches', 'so', so._id],
+    queryFn: () => dispatches.list({ salesOrder: so._id }),
+    enabled: so.status === 'open',
+  });
+
+  if (so.status !== 'open') return null;
+  if (isLoading) return <span className="text-xs text-slate-400">Checking...</span>;
+
+  const total = soDispatches.length;
+  const invoiced = soDispatches.filter(d => d.status === 'invoiced').length;
+  const allInvoiced = total > 0 && invoiced === total;
+  const hasDispatches = total > 0;
+
+  if (!hasDispatches) {
+    return (
+      <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-700 font-medium">
+        ⚠ No dispatches yet
+      </div>
+    );
+  }
+
+  if (!allInvoiced) {
+    return (
+      <div className="flex flex-col items-end gap-0.5">
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-700 font-medium">
+          ⏳ {invoiced}/{total} invoiced
+        </div>
+        <p className="text-[10px] text-slate-400">Level 4 must invoice all dispatches first</p>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition shadow-sm"
+      onClick={() => onRequestClose(so)}
+    >
+      ✅ Close Sale
+    </button>
+  );
+}
+
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 export default function L2SalesOrders() {
+  const location = useLocation();
   const qc = useQueryClient();
+  const [activeFilter, setActiveFilter] = useState(location.state?.filter || 'ALL');
   const [expandedSo, setExpandedSo] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
 
-  const { data = [] } = useQuery({
-    queryKey: ['sales-orders'],
-    queryFn: () => salesOrders.list(),
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['sales-orders', activeFilter],
+    queryFn: () => salesOrders.list(activeFilter === 'ALL' ? {} : { status: activeFilter }),
   });
 
   const closeSale = useMutation({
@@ -137,8 +185,13 @@ export default function L2SalesOrders() {
     },
   });
 
-  const openCount = data.filter((s) => s.status === 'open').length;
-  const closedCount = data.filter((s) => s.status === 'closed').length;
+  const { data: allData = [] } = useQuery({
+    queryKey: ['sales-orders', 'all-counts'],
+    queryFn: () => salesOrders.list(),
+  });
+
+  const openCount = allData.filter((s) => s.status === 'open').length;
+  const closedCount = allData.filter((s) => s.status === 'closed').length;
 
   return (
     <>
@@ -147,19 +200,53 @@ export default function L2SalesOrders() {
         subtitle="Monitor dispatches and close sales when delivery is complete."
       />
 
+      {/* Workflow Banner */}
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Workflow — Invoice Generation Prerequisite</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-500">L4 fills Dispatch Form</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-500">L2 authorizes Sale</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 font-bold text-emerald-700">★ L2 closes Order (here)</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 font-semibold text-indigo-700">✓ L4 generates Invoice</span>
+        </div>
+        <div className="mt-3 text-sm text-slate-600">
+          Once a Sales Order is fully dispatched (or delivery is complete), you must <strong>Close Sale</strong> to lock the order. This signals to Level 4 that they can generate the final invoice.
+        </div>
+      </div>
+
+      {/* Filter chips */}
+      <div className="mb-5 flex gap-2">
+        {['ALL', 'open', 'closed'].map((f) => (
+          <button
+            key={f}
+            onClick={() => setActiveFilter(f)}
+            className={`inline-flex items-center rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+              activeFilter === f
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {f === 'ALL' ? 'All' : f === 'open' ? 'Open' : 'Closed'}
+          </button>
+        ))}
+      </div>
+
       {/* Stats bar */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 cursor-pointer hover:border-emerald-300 transition" onClick={() => setActiveFilter('open')}>
           <p className="text-xs text-slate-400 font-medium">Open</p>
           <p className="text-2xl font-bold text-emerald-600">{openCount}</p>
         </div>
-        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 cursor-pointer hover:border-slate-400 transition" onClick={() => setActiveFilter('closed')}>
           <p className="text-xs text-slate-400 font-medium">Closed</p>
           <p className="text-2xl font-bold text-slate-500">{closedCount}</p>
         </div>
-        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+        <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 cursor-pointer hover:border-brand-300 transition" onClick={() => setActiveFilter('ALL')}>
           <p className="text-xs text-slate-400 font-medium">Total</p>
-          <p className="text-2xl font-bold text-slate-700">{data.length}</p>
+          <p className="text-2xl font-bold text-slate-700">{allData.length}</p>
         </div>
       </div>
 
@@ -215,14 +302,7 @@ export default function L2SalesOrders() {
                   >
                     {isExpanded ? '▲ Hide Dispatches' : '▼ View Dispatches'}
                   </button>
-                  {so.status === 'open' && (
-                    <button
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition"
-                      onClick={() => setCloseTarget(so)}
-                    >
-                      ✅ Close Sale
-                    </button>
-                  )}
+                  <SoCloseButton so={so} onRequestClose={setCloseTarget} />
                 </div>
               </div>
 

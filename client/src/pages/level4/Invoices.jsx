@@ -25,8 +25,11 @@ export default function L4Invoices() {
 
   const { data: invoicesList = [] } = useQuery({ queryKey: ['invoices'], queryFn: () => invoices.list() });
   const { data: ready = [] } = useQuery({
-    queryKey: ['dispatches', 'sale_authorized'],
-    queryFn: () => dispatches.list({ status: 'sale_authorized' }),
+    queryKey: ['dispatches', 'ready_for_invoice'],
+    queryFn: async () => {
+      const all = await dispatches.list();
+      return all.filter(d => ['sale_authorized', 'batchsheet'].includes(d.status));
+    },
   });
   const { data: settings = {} } = useQuery({
     queryKey: ['company-settings'],
@@ -123,8 +126,29 @@ export default function L4Invoices() {
     <>
       <PageHeader
         title="Invoices"
-        subtitle="Generate invoices (only for SALE_AUTHORIZED orders). Works offline with reserved number blocks."
+        subtitle="Generate invoices — only available after Level 2 authorizes the sale."
       />
+
+      {/* Workflow Banner */}
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Workflow — How to generate an Invoice</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 font-semibold text-indigo-700">✓ L4 fills Dispatch Form</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 font-semibold text-indigo-700">✓ L2 authorizes Sale</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-500">L4 creates Batchsheet</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 font-bold text-emerald-700">★ L4 generates Invoice (now)</span>
+          <span className="text-slate-300">→</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-500">L2 closes Order</span>
+        </div>
+        {ready.length === 0 && (
+          <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-sm text-amber-700">
+            ⚠️ <strong>No sale-authorized dispatches found.</strong> Level 2 must authorize the sale before you can generate an invoice.
+          </div>
+        )}
+      </div>
 
       <div className="card card-body mb-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

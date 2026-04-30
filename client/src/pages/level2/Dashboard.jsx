@@ -14,9 +14,9 @@ export default function L2Dashboard() {
     queryKey: ['dispatches', 'awaiting'],
     queryFn: () => dispatches.list({ status: 'dispatched' }),
   });
-  const { data: openSos = [] } = useQuery({
-    queryKey: ['sales-orders', 'open'],
-    queryFn: () => salesOrders.list({ status: 'open' }),
+  const { data: closedSos = [] } = useQuery({
+    queryKey: ['sales-orders', 'closed'],
+    queryFn: () => salesOrders.list({ status: 'closed' }),
   });
   const { data: clientsList = [] } = useQuery({
     queryKey: ['clients'],
@@ -28,6 +28,8 @@ export default function L2Dashboard() {
   });
 
   const pendingKyc = clientsList.filter((c) => c.kycStatus !== 'verified').length;
+  const receivedPaymentSum = paymentList.filter((p) => p.paymentReceived).reduce((a, b) => a + (b.amount || 0), 0);
+  const pendingPaymentSum = paymentList.filter((p) => !p.paymentReceived).reduce((a, b) => a + (b.amount || 0), 0);
   const unpaidCount = paymentList.filter((p) => !p.paymentReceived).length;
 
   return (
@@ -35,11 +37,39 @@ export default function L2Dashboard() {
       <PageHeader title="Manager Overview" subtitle="Approvals, clients, dispatches, and payments." />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        <KpiCard title="Pending Orders" value={pending.length} hint="Awaiting approval" accent />
-        <KpiCard title="Awaiting Sale Auth." value={awaitingAuth.length} hint="Ready to authorise" />
-        <KpiCard title="Open Sales Orders" value={openSos.length} hint={fmtMoney(openSos.reduce((a, s) => a + (s.rate || 0) * (s.remainingQuantity || 0), 0))} />
-        <KpiCard title="Pending KYC" value={pendingKyc} hint={`of ${clientsList.length} clients`} />
-        <KpiCard title="Unpaid Invoices" value={unpaidCount} hint="Payment not recorded" />
+        <KpiCard
+          title="Pending Approval"
+          value={pending.length}
+          hint="Orders awaiting approval"
+          accent
+          to="/l2/orders"
+          state={{ filter: 'PENDING' }}
+        />
+        <KpiCard
+          title="Total Received Payment"
+          value={fmtMoney(receivedPaymentSum)}
+          hint={`${paymentList.filter(p => p.paymentReceived).length} records`}
+          to="/l2/payments"
+        />
+        <KpiCard
+          title="Total Close Order"
+          value={closedSos.length}
+          hint="Fully closed sales orders"
+          to="/l2/sales-orders"
+          state={{ filter: 'closed' }}
+        />
+        <KpiCard
+          title="Total Pending KYC"
+          value={pendingKyc}
+          hint={`of ${clientsList.length} clients`}
+          to="/l2/clients"
+        />
+        <KpiCard
+          title="Not Received / Pending Payment"
+          value={fmtMoney(pendingPaymentSum)}
+          hint={`${unpaidCount} unpaid records`}
+          to="/l2/payments"
+        />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -73,7 +103,7 @@ export default function L2Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="font-semibold">Dispatches awaiting sale authorisation</div>
-            <Link to="/l2/dispatches" className="text-xs text-brand-600 hover:underline">View all →</Link>
+            <Link to="/l2/orders" state={{ filter: 'DISPATCHED' }} className="text-xs text-brand-600 hover:underline">View all →</Link>
           </div>
           <table className="table-clean">
             <thead>
