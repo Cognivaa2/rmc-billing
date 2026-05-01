@@ -10,13 +10,13 @@ import { notifyLevels } from '../services/notification.service.js';
 // ── Schemas ──────────────────────────────────────────────────────────────────
 
 export const createDispatchSchema = z.object({
-  order: z.string().optional(),
-  salesOrder: z.string().optional(),
-  quantity: z.number().positive(),
+  order: z.string().optional().nullable(),
+  salesOrder: z.string().optional().nullable(),
+  quantity: z.coerce.number().positive(),
   vehicleNumber: z.string().min(3),
-  mixDetails: z.string().optional(),
-  driverName: z.string().optional(),
-  dispatchDateTime: z.string().optional(),
+  mixDetails: z.string().optional().nullable(),
+  driverName: z.string().optional().nullable(),
+  dispatchDateTime: z.string().optional().nullable(),
 }).refine((d) => d.order || d.salesOrder, {
   message: 'Either order or salesOrder is required',
 });

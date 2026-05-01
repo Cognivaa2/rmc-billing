@@ -5,7 +5,6 @@ import { orders, invoices, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { KpiCard } from '../../components/KpiCard.jsx';
 import { fmtMoney, statusBadge, fmtDateTime } from '../../utils/format.js';
-import { db } from '../../offline/db.js';
 
 export default function L4Dashboard() {
   const { data: approved = [] } = useQuery({
@@ -19,40 +18,26 @@ export default function L4Dashboard() {
   const { data: invoicesList = [] } = useQuery({ queryKey: ['invoices'], queryFn: () => invoices.list() });
   const { data: dispatchesList = [] } = useQuery({ queryKey: ['dispatches'], queryFn: () => dispatches.list() });
 
-  const [blocks, setBlocks] = useState([]);
-  const [pendingOffline, setPendingOffline] = useState(0);
-  useEffect(() => {
-    (async () => {
-      setBlocks(await db.invoiceBlocks.toArray());
-      setPendingOffline(await db.pendingInvoices.where('syncStatus').equals('pending').count());
-    })();
-  }, []);
+
 
   const today = new Date().toDateString();
   const dispatchesToday = dispatchesList.filter(
     (d) => new Date(d.dispatchDateTime).toDateString() === today,
   ).length;
 
-  const numbersLeft = blocks
-    .filter((b) => b.status === 'active')
-    .reduce((a, b) => a + (b.rangeEnd - b.rangeStart + 1 - (b.usedNumbers?.length || 0)), 0);
+
 
   return (
     <>
       <PageHeader
         title="Dispatch & Invoicing"
-        subtitle="Fill dispatch forms, generate invoices (online or offline), manage batchsheets."
+        subtitle="Fill dispatch forms, generate invoices, and manage batchsheets."
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <KpiCard title="Approved — ready to dispatch" value={approved.length} accent />
         <KpiCard title="Ready to invoice" value={saleAuthorized.length} hint="Sale authorised dispatches" />
         <KpiCard title="Dispatches today" value={dispatchesToday} />
-        <KpiCard
-          title="Offline invoice buffer"
-          value={numbersLeft}
-          hint={pendingOffline > 0 ? `${pendingOffline} pending sync` : 'Fully synced'}
-        />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">

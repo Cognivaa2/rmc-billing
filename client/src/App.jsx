@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout.jsx';
 import { RequireAuth } from './components/RequireAuth.jsx';
 import { useAuth } from './store/auth.js';
-import { installSyncListeners } from './offline/sync.js';
 
 import Login from './pages/auth/Login.jsx';
 import Register from './pages/auth/Register.jsx';
@@ -49,7 +48,6 @@ export default function App() {
 
   useEffect(() => {
     boot();
-    installSyncListeners();
   }, [boot]);
 
   return (

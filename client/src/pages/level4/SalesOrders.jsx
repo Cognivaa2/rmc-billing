@@ -15,63 +15,50 @@ function SoDispatchHistory({ soId }) {
   });
 
   return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
+    <div className="border-t border-slate-100">
       <button
-        className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 transition"
+        className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-slate-400 hover:text-brand-600 hover:bg-slate-50 transition-colors"
         onClick={() => setOpen((v) => !v)}
       >
         <svg
-          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          className={`transition-transform ${open ? 'rotate-90' : ''}`}
-          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         >
-          <path d="M9 18l6-6-6-6" />
+          <path d="M6 9l6 6 6-6" />
         </svg>
-        {open ? '▲ Hide Dispatches' : '▼ View My Dispatches'}
+        {open ? 'Hide Recent Dispatches' : 'View My Dispatches'}
       </button>
 
       {open && (
-        <div className="mt-2">
-          {isLoading && (
-            <p className="text-xs text-slate-400 italic">Loading dispatches…</p>
-          )}
-          {!isLoading && data.length === 0 && (
-            <p className="text-xs text-slate-400 italic">No dispatches submitted yet for this Sales Order.</p>
-          )}
-          {data.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
-              <table className="w-full text-xs">
+        <div className="p-4 bg-slate-50/50">
+          {isLoading ? (
+            <p className="text-xs text-slate-400 italic text-center py-2">Loading dispatches…</p>
+          ) : data.length === 0 ? (
+            <p className="text-xs text-slate-400 italic text-center py-2">No dispatches submitted yet.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="bg-slate-50 text-left text-slate-500">
-                    <th className="px-3 py-2">Dispatch #</th>
-                    <th className="px-3 py-2">Vehicle</th>
-                    <th className="px-3 py-2">Driver</th>
-                    <th className="px-3 py-2">Qty (m³)</th>
-                    <th className="px-3 py-2">When</th>
-                    <th className="px-3 py-2">Status</th>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <th className="px-3 py-2 font-bold uppercase tracking-wider">Number</th>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wider">Vehicle</th>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wider text-right">Qty (m³)</th>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {data.map((d) => (
-                    <tr key={d._id} className="border-t border-slate-100 hover:bg-slate-50 transition">
+                    <tr key={d._id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-2 font-medium text-slate-700">{d.dispatchNumber}</td>
-                      <td className="px-3 py-2 font-mono text-slate-600 uppercase">{d.vehicleNumber}</td>
-                      <td className="px-3 py-2 text-slate-500">{d.driverName || '—'}</td>
-                      <td className="px-3 py-2 font-semibold text-slate-700">{d.quantity}</td>
-                      <td className="px-3 py-2 text-slate-400">{fmtDateTime(d.dispatchDateTime)}</td>
+                      <td className="px-3 py-2 text-slate-600 uppercase font-mono">{d.vehicleNumber}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-slate-800">{d.quantity}</td>
                       <td className="px-3 py-2">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          d.status === 'dispatched'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : d.status === 'sale_authorized'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                          d.status === 'dispatched' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          d.status === 'sale_authorized' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          'bg-emerald-50 text-emerald-600 border-emerald-100'
                         }`}>
-                          {d.status === 'dispatched'
-                            ? '⏳ Awaiting Auth'
-                            : d.status === 'sale_authorized'
-                            ? '✅ Sale Auth.'
-                            : '🧾 Invoiced'}
+                          {d.status === 'dispatched' ? 'Pending' : d.status === 'sale_authorized' ? 'Authorized' : 'Invoiced'}
                         </span>
                       </td>
                     </tr>
@@ -89,144 +76,87 @@ function SoDispatchHistory({ soId }) {
 /* ─── Dispatch Form Modal ────────────────────────────────────────────────── */
 function DispatchFormModal({ so, onClose, isPending, onSubmit, error }) {
   const [form, setForm] = useState({
-    quantity: so.remainingQuantity ?? so.totalQuantity,
+    quantity: (so.remainingQuantity != null && !isNaN(so.remainingQuantity) && so.remainingQuantity > 0)
+      ? so.remainingQuantity
+      : '',
     vehicleNumber: '',
     driverName: '',
     mixDetails: '',
   });
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-
-  const isValid = form.quantity && Number(form.quantity) > 0 && form.vehicleNumber.trim() && form.driverName.trim();
+  const parsedQty = parseFloat(form.quantity);
+  const isValid = !isNaN(parsedQty) && parsedQty > 0 && form.vehicleNumber.trim().length >= 3 && form.driverName.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🚛</span>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Fill Dispatch Form</h2>
-              <p className="text-xs text-indigo-200">
-                {so.soNumber} · {so.client?.clientName}
-              </p>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="bg-slate-900 px-6 py-5">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <span>🚛</span> New Dispatch
+          </h2>
+          <p className="text-slate-400 text-xs mt-1 font-medium">{so.soNumber} &bull; {so.client?.clientName}</p>
         </div>
 
-        {/* Pre-filled info (read-only) */}
-        <div className="px-6 pt-5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Auto-filled from Sales Order
-          </p>
-          <div className="grid grid-cols-3 gap-2 mb-5">
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-              <p className="text-xs text-slate-400 mb-0.5">Concrete Grade</p>
-              <p className="font-semibold text-slate-800 text-sm">{so.grade?.gradeCode ?? '—'}</p>
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Grade</p>
+              <p className="text-sm font-bold text-slate-800">{so.grade?.gradeCode || 'N/A'}</p>
             </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-              <p className="text-xs text-slate-400 mb-0.5">Total Qty</p>
-              <p className="font-semibold text-slate-800 text-sm">{so.totalQuantity} m³</p>
-            </div>
-            <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
-              <p className="text-xs text-emerald-500 mb-0.5">Remaining</p>
-              <p className="font-semibold text-emerald-700 text-sm">{so.remainingQuantity} m³</p>
+            <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Remaining</p>
+              <p className="text-sm font-bold text-emerald-700">{so.remainingQuantity} m³</p>
             </div>
           </div>
 
-          {/* Editable fields */}
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Dispatch Details
-          </p>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="space-y-3">
             <div>
-              <label className="label mb-1 block">
-                Quantity Dispatched (m³) <span className="text-red-500">*</span>
-              </label>
+              <label className="label text-[11px] font-bold text-slate-500 uppercase">Dispatch Quantity (m³)</label>
               <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={so.remainingQuantity}
-                className="input w-full"
-                value={form.quantity}
-                onChange={(e) => set('quantity', e.target.value)}
+                type="number" step="0.01" min="0.01" max={so.remainingQuantity}
+                className="input" value={form.quantity} onChange={(e) => set('quantity', e.target.value)}
               />
             </div>
             <div>
-              <label className="label mb-1 block">
-                Vehicle Number <span className="text-red-500">*</span>
-              </label>
+              <label className="label text-[11px] font-bold text-slate-500 uppercase">Vehicle Number</label>
               <input
-                type="text"
-                className="input w-full uppercase"
-                placeholder="MH12AB1234"
-                value={form.vehicleNumber}
-                onChange={(e) => set('vehicleNumber', e.target.value.toUpperCase())}
+                type="text" className="input uppercase" placeholder="MH12AB1234"
+                value={form.vehicleNumber} onChange={(e) => set('vehicleNumber', e.target.value.toUpperCase())}
               />
             </div>
             <div>
-              <label className="label mb-1 block">
-                Driver Name <span className="text-red-500">*</span>
-              </label>
+              <label className="label text-[11px] font-bold text-slate-500 uppercase">Driver Name</label>
               <input
-                type="text"
-                className="input w-full"
-                placeholder="e.g. Ramesh Kumar"
-                value={form.driverName}
-                onChange={(e) => set('driverName', e.target.value)}
+                type="text" className="input" placeholder="e.g. Rahul Singh"
+                value={form.driverName} onChange={(e) => set('driverName', e.target.value)}
               />
             </div>
             <div>
-              <label className="label mb-1 block">Mix Details / Grade Spec</label>
+              <label className="label text-[11px] font-bold text-slate-500 uppercase">Additional Notes</label>
               <input
-                type="text"
-                className="input w-full"
-                placeholder="e.g. w/c ratio 0.45, slump 120mm"
-                value={form.mixDetails}
-                onChange={(e) => set('mixDetails', e.target.value)}
+                type="text" className="input" placeholder="Mix or Site specific details"
+                value={form.mixDetails} onChange={(e) => set('mixDetails', e.target.value)}
               />
             </div>
           </div>
 
-          {error && (
-            <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
-              ⚠ {error}
-            </div>
-          )}
+          {error && <p className="text-xs text-rose-500 font-medium bg-rose-50 p-2.5 rounded-lg border border-rose-100">⚠ {error}</p>}
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 px-6 py-5 bg-slate-50 border-t border-slate-100">
-          <button
-            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all active:scale-95"
-            onClick={onClose}
-            disabled={isPending}
-          >
-            Cancel
-          </button>
-          <button
-            className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-2.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-60 disabled:shadow-none active:scale-95 flex items-center gap-2"
+        <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+          <button className="btn-secondary flex-1 py-2.5" onClick={onClose} disabled={isPending}>Cancel</button>
+          <button 
+            className="btn-primary flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 font-bold" 
             disabled={isPending || !isValid}
             onClick={() => onSubmit(so._id, {
-              quantity: Number(form.quantity),
-              vehicleNumber: form.vehicleNumber,
-              driverName: form.driverName || undefined,
-              mixDetails: form.mixDetails || undefined,
+              quantity: parseFloat(form.quantity),
+              vehicleNumber: form.vehicleNumber.trim(),
+              driverName: form.driverName.trim() || undefined,
+              mixDetails: form.mixDetails.trim() || undefined,
             })}
           >
-            {isPending ? (
-              <>
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-                Submitting…
-              </>
-            ) : (
-              '🚛 Submit Dispatch'
-            )}
+            {isPending ? 'Submitting…' : 'Submit Dispatch'}
           </button>
         </div>
       </div>
@@ -257,179 +187,114 @@ export default function L4SalesOrders() {
       setTimeout(() => setSuccessMsg(''), 4000);
     },
     onError: (err) => {
-      setDispatchError(err?.response?.data?.error || 'Failed to submit dispatch');
+      const data = err?.response?.data;
+      if (data?.details?.fieldErrors) {
+        const firstField = Object.keys(data.details.fieldErrors)[0];
+        const msg = data.details.fieldErrors[firstField][0];
+        setDispatchError(`${firstField}: ${msg}`);
+      } else if (data?.error) {
+        setDispatchError(data.error);
+      } else {
+        setDispatchError('Failed to submit dispatch');
+      }
     },
   });
 
   return (
     <>
       <PageHeader
-        title="Sales Orders"
-        subtitle="View open sales orders and fill dispatch forms to track concrete delivery."
+        title="Open Orders"
+        subtitle="View your active sales orders and record new concrete dispatches."
       />
 
-      {/* Success toast */}
       {successMsg && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700">
-          <span>✅</span>
-          <span>{successMsg}</span>
+        <div className="mb-6 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-semibold text-emerald-700 animate-in fade-in slide-in-from-top-2">
+          <span>✅</span> {successMsg}
         </div>
       )}
 
-      {isLoading && (
-        <div className="card card-body text-center text-sm text-slate-400">Loading…</div>
-      )}
-
-      {!isLoading && data.length === 0 && (
-        <div className="card card-body text-center py-12">
-          <div className="text-3xl mb-3">📋</div>
-          <div className="text-slate-500 font-medium">No open Sales Orders</div>
-          <div className="text-slate-400 text-sm mt-1">
-            Sales Orders will appear here once Level 2 creates them.
-          </div>
+      {isLoading ? (
+        <div className="py-12 text-center text-slate-400">Loading orders…</div>
+      ) : data.length === 0 ? (
+        <div className="card py-16 text-center">
+          <p className="text-4xl mb-4 opacity-20">📋</p>
+          <h3 className="font-bold text-slate-800">No active Sales Orders</h3>
+          <p className="text-sm text-slate-500 mt-1">Orders will appear here once authorized by Level 2.</p>
         </div>
-      )}
+      ) : (
+        <div className="space-y-4">
+          {data.map((so) => {
+            const pct = so.totalQuantity ? Math.round(((so.dispatchedQuantity ?? 0) / so.totalQuantity) * 100) : 0;
+            const isFull = so.remainingQuantity <= 0;
 
-      <div className="space-y-4">
-        {data.map((so) => {
-          const pct = so.totalQuantity
-            ? Math.round(((so.dispatchedQuantity ?? 0) / so.totalQuantity) * 100)
-            : 0;
-
-          return (
-            <div key={so._id} className="card card-body transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden bg-white/80 backdrop-blur-sm border border-slate-100/60">
-              {/* Subtle top gradient accent */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-400 to-emerald-400 opacity-80" />
-              
-              {/* Top row */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-2">
-                <div className="min-w-0 flex-1">
-                  {/* SO number + status */}
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span className="text-lg font-bold text-slate-800 tracking-tight">{so.soNumber}</span>
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200 shadow-sm">
-                      ● Open
-                    </span>
-                    {so.numberOfVehicles && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50/80 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/50 backdrop-blur-sm">
-                        🚛 {so.numberOfVehicles} vehicles
-                      </span>
-                    )}
-                    {so.sourceOrder?.orderNumber && (
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold border backdrop-blur-sm ${
-                        so.sourceOrder.status === 'SALE_AUTHORIZED' 
-                        ? 'bg-violet-50/80 text-violet-700 border-violet-200/50' 
-                        : 'bg-slate-50/80 text-slate-500 border-slate-200/50'
-                      }`}>
-                        Order: {so.sourceOrder.orderNumber} 
-                        {so.sourceOrder.status === 'SALE_AUTHORIZED' && ' (Sale Auth.)'}
-                      </span>
-                    )}
+            return (
+              <div key={so._id} className="card overflow-hidden flex flex-col border-l-4 border-l-brand-600 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex flex-col md:flex-row md:items-center p-5 gap-6">
+                  {/* Info Column */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-lg font-black text-slate-900 tracking-tight">{so.soNumber}</span>
+                      <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-widest border border-emerald-200">Open</span>
+                      {so.site?.siteName && (
+                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                          <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          {so.site.siteName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-base font-bold text-slate-700">{so.client?.clientName}</div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                      <div className="bg-slate-100 text-slate-700 px-2 py-1 rounded font-bold">{so.grade?.gradeCode}</div>
+                      <div className="text-slate-400 font-medium">
+                        Remaining: <span className={`font-bold ${isFull ? 'text-rose-500' : 'text-slate-800'}`}>{so.remainingQuantity} m³</span>
+                      </div>
+                      <div className="text-slate-400 font-medium">
+                        Total: <span className="font-bold text-slate-800">{so.totalQuantity} m³</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Client / Grade / Rate */}
-                  <div className="text-sm text-slate-600 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">{so.client?.clientName}</span>
-                    {so.site?.siteName && (
-                      <span className="text-slate-500 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                        {so.site.siteName}
-                      </span>
-                    )}
-                    {so.grade?.gradeCode && (
-                      <span className="inline-flex items-center rounded-md bg-slate-800 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
-                        {so.grade.gradeCode}
-                      </span>
-                    )}
-                    <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/50">
-                      {fmtMoney(so.rate)}/m³
-                    </span>
+                  {/* Progress Column */}
+                  <div className="w-full md:w-56 shrink-0">
+                    <div className="flex justify-between items-end mb-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fulfillment</span>
+                      <span className="text-xs font-bold text-slate-600">{pct}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-1000 ease-out ${pct >= 100 ? 'bg-rose-500' : 'bg-brand-600'}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
                   </div>
 
-                  {/* Created at */}
-                  <div className="mt-2.5 text-xs font-medium text-slate-400 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    Created {fmtDateTime(so.createdAt)}
+                  {/* Action Column */}
+                  <div className="shrink-0 flex items-center md:pl-4 border-l-0 md:border-l border-slate-100">
+                    <button
+                      className="btn-primary w-full md:w-auto px-6 py-2.5 bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-500/20 font-bold tracking-tight disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                      onClick={() => { setDispatchError(''); setDispatchTarget(so); }}
+                      disabled={isFull}
+                    >
+                      Fill Dispatch
+                    </button>
                   </div>
                 </div>
 
-                {/* Action button */}
-                <button
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/25 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                  onClick={() => { setDispatchError(''); setDispatchTarget(so); }}
-                  disabled={so.remainingQuantity <= 0}
-                  title={so.remainingQuantity <= 0 ? 'All quantity already dispatched' : 'Fill dispatch form'}
-                >
-                  <span className="text-lg">🚛</span> Fill Dispatch
-                </button>
-              </div>
-
-              {/* Quantity stats cards */}
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/60 p-3 sm:p-4 text-center shadow-sm relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 relative z-10">Total Ordered</p>
-                  <p className="text-lg sm:text-2xl font-black text-slate-800 relative z-10">
-                    {so.totalQuantity} <span className="text-xs sm:text-sm font-bold text-slate-400">m³</span>
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200/60 p-3 sm:p-4 text-center shadow-sm relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1 relative z-10">Dispatched</p>
-                  <p className="text-lg sm:text-2xl font-black text-emerald-700 relative z-10">
-                    {so.dispatchedQuantity ?? 0} <span className="text-xs sm:text-sm font-bold text-emerald-500/80">m³</span>
-                  </p>
-                </div>
-                <div className={`rounded-2xl border p-3 sm:p-4 text-center shadow-sm relative overflow-hidden group ${
-                  (so.remainingQuantity ?? 0) <= 0
-                    ? 'bg-gradient-to-br from-red-50 to-red-100/50 border-red-200/60'
-                    : 'bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200/60'
-                }`}>
-                  <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 relative z-10 ${(so.remainingQuantity ?? 0) <= 0 ? 'text-red-500' : 'text-amber-600'}`}>
-                    Remaining
-                  </p>
-                  <p className={`text-lg sm:text-2xl font-black relative z-10 ${(so.remainingQuantity ?? 0) <= 0 ? 'text-red-600' : 'text-amber-700'}`}>
-                    {so.remainingQuantity ?? 0} <span className="text-xs sm:text-sm font-bold opacity-70">m³</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mt-5 relative">
-                <div className="flex justify-between items-end mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fulfillment Progress</span>
-                  <span className="text-xs font-bold text-slate-500">{pct}%</span>
-                </div>
-                <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ease-out relative ${
-                      pct >= 100 ? 'bg-gradient-to-r from-red-400 to-red-500' : pct > 60 ? 'bg-gradient-to-r from-amber-400 to-amber-500' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                    }`}
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  >
-                    {/* Animated shine effect on progress bar */}
-                    <div className="absolute top-0 left-0 bottom-0 w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dispatch history */}
-              <div className="mt-2">
+                {/* Sub-history Toggle */}
                 <SoDispatchHistory soId={so._id} />
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Dispatch Form Modal */}
+      {/* Modal */}
       {dispatchTarget && (
         <DispatchFormModal
           so={dispatchTarget}
           onClose={() => { setDispatchTarget(null); setDispatchError(''); }}
           isPending={submitDispatch.isPending}
-          onSubmit={(soId, d) => submitDispatch.mutate({ soId, data: d })}
+          onSubmit={(soId, d) => submitDispatch.mutate({ soId, d })}
           error={dispatchError}
         />
       )}

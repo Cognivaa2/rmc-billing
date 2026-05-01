@@ -90,7 +90,22 @@ async function start() {
     logger.error('Failed to connect to database:', err.message);
     throw err;
   }
-  
+
+  httpServer.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(
+        `\n\n  ✗ Port ${env.port} is already in use.\n` +
+        `    Another server instance is running in the background.\n\n` +
+        `  → To fix, run:  lsof -ti :${env.port} | xargs kill -9\n` +
+        `    Then start again: npm run start\n`
+      );
+      process.exit(1);
+    } else {
+      logger.error('HTTP server error:', err.message);
+      process.exit(1);
+    }
+  });
+
   httpServer.listen(env.port, () => {
     logger.info(`RMC Billing API listening on :${env.port}`);
   });

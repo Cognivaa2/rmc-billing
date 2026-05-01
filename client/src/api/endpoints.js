@@ -75,9 +75,6 @@ export const invoices = {
   list: (params) => api.get('/invoices', { params }).then((r) => r.data.invoices),
   get: (id) => api.get(`/invoices/${id}`).then((r) => r.data.invoice),
   create: (data) => api.post('/invoices', data).then((r) => r.data.invoice),
-  reserveBlock: (count = 50) => api.post('/invoices/reserve-block', { count }).then((r) => r.data),
-  myBlocks: () => api.get('/invoices/blocks').then((r) => r.data.blocks),
-  sync: (invoicesArr) => api.post('/invoices/sync', { invoices: invoicesArr }).then((r) => r.data.results),
   pdfUrl: (id) => `${api.defaults.baseURL}/invoices/${id}/pdf`,
 };
 
