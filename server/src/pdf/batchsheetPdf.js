@@ -1,26 +1,6 @@
 import PDFDocument from 'pdfkit';
 
-/**
- * Renders a Docket / Batch Report / Autographic Record PDF that matches the
- * client's physical format:
- *
- *  Header strip  — Batch Date, Batch Start/End Time, Batch Number, Batcher Name,
- *                  Order Number, Customer, Site, Recipe Code/Name, Truck Number,
- *                  Truck Driver, Plant Serial Number, Ordered/Production/Adj/Manual
- *                  Quantity, Mixer Capacity, Batch Size
- *
- *  Mix table     — Columns grouped as:
- *                    Aggregate  : SAND, SAND, 10MM, 10MM
- *                    Cement     : Agg5, Agg6, OPC, PPC2, Cem3, Cem4, Fly Ash
- *                    Water/Ice  : WAT, Wtr2, Wtr3
- *                    Admixture  : Admi, ADM, Admi
- *
- *                  Row 1 — "Recipe targets in Kgs."
- *                  Row 2+ — Actual batch values (from mixDesignData)
- *
- * @param {import('stream').Writable} stream
- * @param {{ dispatch, client, grade, batchsheet, template }} ctx
- */
+
 export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchsheet }) {
   const doc = new PDFDocument({
     size: 'A4',
@@ -99,7 +79,7 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
   ly = drawInfoRow('Batch Number', dispatch?.dispatchNumber || mix.batchNumber, col1X, ly);
   ly = drawInfoRow('Order Number', dispatch?.order?.orderNumber || mix.orderNumber, col1X, ly);
   ly = drawInfoRow('Batch Date', dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleDateString('en-GB') : '—', col1X, ly);
-  
+
   const startTime = dispatch?.dispatchDateTime ? new Date(new Date(dispatch.dispatchDateTime).getTime() - 15 * 60000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
   const endTime = dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
   const bTime = (startTime && endTime) ? `${startTime} - ${endTime}` : '—';
@@ -174,7 +154,7 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
 
   const drawSection = (section, x, startY) => {
     let curY = startY;
-    
+
     // Title
     doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.textMain).text(section.title, x, curY, { lineBreak: false });
     curY += 12;
@@ -183,7 +163,7 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
     doc.rect(x, curY, tableW, rowH).fill(COLORS.headerBg);
     section.cols.forEach((col, i) => {
       doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.headerText)
-         .text(col, x + i * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
+        .text(col, x + i * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
     });
     curY += rowH;
 
@@ -193,15 +173,15 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
         doc.rect(x, curY, tableW, rowH).fill('#f1f5f9');
       }
       doc.rect(x, curY, tableW, rowH).strokeColor(COLORS.border).lineWidth(0.2).stroke();
-      
+
       const target = getTarget(item.key);
       const actual = getActual(item.key);
-      
+
       doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.textMain).text(item.label, x + 5, curY + 4, { width: cellW - 5, lineBreak: false });
       doc.font('Helvetica').fontSize(7).fillColor(COLORS.textMain).text(target || '0', x + cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
       doc.font('Helvetica').fontSize(7).fillColor(COLORS.textMain).text(actual || '0', x + 2 * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
       doc.font('Helvetica').fontSize(7).fillColor(COLORS.textMain).text('', x + 3 * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
-      
+
       curY += rowH;
     });
 
@@ -211,7 +191,7 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
   // Row 1: Aggregates and Cement
   const y1 = drawSection(SECTIONS[0], LEFT, y);
   const y2 = drawSection(SECTIONS[1], LEFT + W / 2 + 5, y);
-  
+
   y = Math.max(y1, y2) + 15;
 
   // Row 2: Water and Admixtures
@@ -222,15 +202,15 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
 
   // ── Footer Note ───────────────────────────────────────────────────
   doc.font('Helvetica-Oblique').fontSize(6.5).fillColor(COLORS.textDim)
-     .text('* Target and Actual values include moisture correction / absorption in % and other corrections in Kgs where applicable.', LEFT, y, { lineBreak: false });
+    .text('* Target and Actual values include moisture correction / absorption in % and other corrections in Kgs where applicable.', LEFT, y, { lineBreak: false });
 
   // ── Page Footer ───────────────────────────────────────────────────
   const footerY = doc.page.height - 35;
   doc.moveTo(LEFT, footerY - 5).lineTo(LEFT + W, footerY - 5).strokeColor(COLORS.border).lineWidth(0.5).stroke();
-  
+
   const now = new Date().toLocaleString('en-GB', { hour12: true });
   const footerLeft = `Generated: ${now}  |  Dispatch: ${dispatch?.dispatchNumber || '—'}  |  Vehicle: ${dispatch?.vehicleNumber || '—'}`;
-  
+
   doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.textDim).text(footerLeft, LEFT, footerY, { lineBreak: false });
   doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.textMain).text('Page 1 of 1', LEFT, footerY, { align: 'right', width: W, lineBreak: false });
 
