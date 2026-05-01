@@ -7,23 +7,23 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime } from '../../utils/format.js';
 
 const MATERIALS = [
-  { key: 'sand1',     label: 'Sand 1' },
-  { key: 'sand2',     label: 'Sand 2' },
+  { key: 'sand1', label: 'Sand 1' },
+  { key: 'sand2', label: 'Sand 2' },
   { key: 'agg_10mm1', label: 'Agg 10mm 1' },
   { key: 'agg_10mm2', label: 'Agg 10mm 2' },
-  { key: 'agg5',      label: 'Agg 5mm' },
-  { key: 'agg6',      label: 'Agg 6mm' },
-  { key: 'opc',       label: 'OPC' },
-  { key: 'ppc2',      label: 'PPC 2' },
-  { key: 'cem3',      label: 'Cement 3' },
-  { key: 'cem4',      label: 'Cement 4' },
-  { key: 'flyAsh',    label: 'Fly Ash' },
-  { key: 'water',     label: 'Water' },
-  { key: 'wtr2',      label: 'Water 2' },
-  { key: 'wtr3',      label: 'Water 3' },
-  { key: 'admi1',     label: 'Admixture 1' },
-  { key: 'adm',       label: 'Admixture' },
-  { key: 'admi2',     label: 'Admixture 2' },
+  { key: 'agg5', label: 'Agg 5mm' },
+  { key: 'agg6', label: 'Agg 6mm' },
+  { key: 'opc', label: 'OPC' },
+  { key: 'ppc2', label: 'PPC 2' },
+  { key: 'cem3', label: 'Cement 3' },
+  { key: 'cem4', label: 'Cement 4' },
+  { key: 'flyAsh', label: 'Fly Ash' },
+  { key: 'water', label: 'Water' },
+  { key: 'wtr2', label: 'Water 2' },
+  { key: 'wtr3', label: 'Water 3' },
+  { key: 'admi1', label: 'Admixture 1' },
+  { key: 'adm', label: 'Admixture' },
+  { key: 'admi2', label: 'Admixture 2' },
 ];
 
 export default function L4Batchsheets() {
@@ -31,10 +31,20 @@ export default function L4Batchsheets() {
   const location = useLocation();
   const [editingId, setEditingId] = useState(null);
 
-  const { data: list = [] } = useQuery({
-    queryKey: ['batchsheets'],
+  const [page, setPage] = useState(1);
+
+  const { data: allBatchsheets = [] } = useQuery({
+    queryKey: ['batchsheets', 'all'],
     queryFn: () => batchsheets.list(),
   });
+
+  const { data: pageData } = useQuery({
+    queryKey: ['batchsheets', { page }],
+    queryFn: () => batchsheets.list({ page, limit: 6 }),
+  });
+
+  const list = pageData?.batchsheets || [];
+  const totalPages = pageData?.pages || 1;
   const { data: dispatchList = [] } = useQuery({
     queryKey: ['dispatches'],
     queryFn: () => dispatches.list(),
@@ -51,7 +61,7 @@ export default function L4Batchsheets() {
 
   const eligibleDispatches = dispatchList.filter((d) => {
     if (!['sale_authorized', 'invoiced'].includes(d.status)) return false;
-    const alreadyHasBatchsheet = list.some((b) => (b.dispatch?._id || b.dispatch) === d._id);
+    const alreadyHasBatchsheet = allBatchsheets.some((b) => (b.dispatch?._id || b.dispatch) === d._id);
     return !alreadyHasBatchsheet;
   });
 
@@ -174,7 +184,7 @@ export default function L4Batchsheets() {
                   </div>
                 ))}
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 border-t border-slate-100 pt-3">
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 border-t border-slate-100 pt-3">
                 <div>
                   <label className="label text-[11px]">Recipe Code</label>
                   <input className="input py-1.5 text-sm" {...register('mix.recipeCode')} />
@@ -187,67 +197,71 @@ export default function L4Batchsheets() {
                   <label className="label text-[11px]">Batcher Name</label>
                   <input className="input py-1.5 text-sm" {...register('mix.batcherName')} />
                 </div>
+                <div>
+                  <label className="label text-[11px]">Truck Driver</label>
+                  <input className="input py-1.5 text-sm" {...register('mix.truckDriver')} />
+                </div>
+                <div>
+                  <label className="label text-[11px]">Adj / Manual Qty</label>
+                  <input className="input py-1.5 text-sm" {...register('mix.adjQuantity')} />
+                </div>
+                <div>
+                  <label className="label text-[11px]">Plant Serial No</label>
+                  <input className="input py-1.5 text-sm" {...register('mix.plantSerialNumber')} placeholder="BP-1" />
+                </div>
               </div>
             </div>
 
             {/* Step 3 — Mixer Cycles */}
-            <div className="card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                <h2 className="font-semibold text-slate-800">3 — Mixer Cycles</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-slate-800 text-lg">3 — Mixer Cycles</h2>
                 <button
                   type="button"
-                  className="btn-primary text-xs px-3 py-1.5"
+                  className="btn-primary text-sm px-4 py-2"
                   onClick={() => append({})}
                 >
                   + Add Cycle
                 </button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                      <th className="px-3 py-2 text-xs font-semibold text-slate-500 w-10">#</th>
-                      {MATERIALS.map(({ label }) => (
-                        <th key={label} className="px-2 py-2 text-xs font-semibold text-slate-500 whitespace-nowrap min-w-[80px]">
-                          {label}
-                        </th>
+
+              <div className="grid grid-cols-1 gap-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="card border-slate-200 overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cycle #{index + 1}</span>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-rose-500 transition-colors"
+                        onClick={() => remove(index)}
+                        title="Remove Cycle"
+                      >
+                        <span className="text-xl font-bold">×</span>
+                      </button>
+                    </div>
+                    <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {MATERIALS.map(({ key, label }) => (
+                        <div key={key}>
+                          <label className="block text-[10px] font-medium text-slate-400 uppercase mb-0.5 truncate" title={label}>
+                            {label}
+                          </label>
+                          <input
+                            className="w-full border border-slate-200 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-brand-500 focus:border-brand-400 text-right font-mono"
+                            placeholder="0"
+                            {...register(`batches.${index}.${key}`)}
+                          />
+                        </div>
                       ))}
-                      <th className="px-2 py-2 w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fields.map((field, index) => (
-                      <tr key={field.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="px-3 py-1.5 text-center text-xs text-slate-400 font-mono">{index + 1}</td>
-                        {MATERIALS.map(({ key }) => (
-                          <td key={key} className="px-1 py-1">
-                            <input
-                              className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-brand-500 focus:border-brand-400 text-right"
-                              placeholder="0"
-                              {...register(`batches.${index}.${key}`)}
-                            />
-                          </td>
-                        ))}
-                        <td className="px-2 py-1 text-center">
-                          <button
-                            type="button"
-                            className="text-slate-300 hover:text-rose-500 transition-colors text-base font-bold"
-                            onClick={() => remove(index)}
-                          >
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {fields.length === 0 && (
-                      <tr>
-                        <td colSpan={MATERIALS.length + 2} className="py-8 text-center text-sm text-slate-400">
-                          No cycles added yet. Click "+ Add Cycle" to begin.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </div>
+                  </div>
+                ))}
+
+                {fields.length === 0 && (
+                  <div className="card card-body py-10 text-center border-dashed border-2 border-slate-200 bg-slate-50">
+                    <div className="text-4xl mb-2 grayscale opacity-20">🔄</div>
+                    <p className="text-sm text-slate-400">No mixer cycles added. Click "+ Add Cycle" to begin.</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -269,7 +283,7 @@ export default function L4Batchsheets() {
           <div className="card overflow-hidden sticky top-4">
             <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
               <h2 className="font-semibold text-slate-800">Saved Batchsheets</h2>
-              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-0.5 rounded-full">{list.length}</span>
+              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-0.5 rounded-full">{pageData?.total || 0} Total</span>
             </div>
             <div className="divide-y divide-slate-100 max-h-[680px] overflow-y-auto">
               {list.map((b) => (
@@ -308,6 +322,30 @@ export default function L4Batchsheets() {
                 </div>
               )}
             </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 bg-slate-50">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1 text-xs"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-medium text-slate-500">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1 text-xs"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

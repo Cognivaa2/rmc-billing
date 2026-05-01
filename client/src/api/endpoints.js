@@ -85,7 +85,10 @@ export const batchsheetTemplates = {
 };
 
 export const batchsheets = {
-  list: (params) => api.get('/batchsheets', { params }).then((r) => r.data.batchsheets),
+  list: (params) => api.get('/batchsheets', { params }).then((r) => {
+    if (params && params.page !== undefined) return r.data;
+    return r.data.batchsheets;
+  }),
   create: (data) => api.post('/batchsheets', data).then((r) => r.data.batchsheet),
   update: (id, data) => api.patch(`/batchsheets/${id}`, data).then((r) => r.data.batchsheet),
   pdfUrl: (id) => `${api.defaults.baseURL}/batchsheets/${id}/pdf`,

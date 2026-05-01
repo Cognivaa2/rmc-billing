@@ -22,12 +22,6 @@ const REPORTS = [
     dateable: false,
   },
   {
-    id: 'orders',
-    title: 'Order Report',
-    fields: 'Date · Order No · Client · Site · Grade · Qty · Rate · Status · L3',
-    dateable: true,
-  },
-  {
     id: 'payments',
     title: 'Payment Report',
     fields: 'Date · Client · Invoice · Amount · Received · Received At · Recorded By',

@@ -16,15 +16,31 @@ export const createBatchsheetSchema = z.object({
 });
 
 export const listBatchsheets = asyncHandler(async (req, res) => {
-  const { dispatch } = req.query;
+  const { dispatch, page = 1, limit = 2 } = req.query;
   const filter = {};
   if (dispatch) filter.dispatch = dispatch;
-  const batchsheets = await Batchsheet.find(filter)
-    .populate({ path: 'dispatch', populate: { path: 'client grade' } })
-    .populate('template', 'templateName type')
-    .populate('generatedByLevel4', 'name')
-    .sort({ createdAt: -1 });
-  res.json({ batchsheets });
+  
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 2;
+  const skip = (pageNum - 1) * limitNum;
+
+  const [batchsheets, total] = await Promise.all([
+    Batchsheet.find(filter)
+      .populate({ path: 'dispatch', populate: { path: 'client grade' } })
+      .populate('template', 'templateName type')
+      .populate('generatedByLevel4', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum),
+    Batchsheet.countDocuments(filter),
+  ]);
+
+  res.json({
+    batchsheets,
+    total,
+    page: pageNum,
+    pages: Math.ceil(total / limitNum),
+  });
 });
 
 export const createBatchsheet = asyncHandler(async (req, res) => {
