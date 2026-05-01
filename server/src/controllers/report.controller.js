@@ -4,6 +4,7 @@ import { DispatchForm } from '../models/DispatchForm.js';
 import { SalesOrder } from '../models/SalesOrder.js';
 import { Client } from '../models/Client.js';
 import { Order } from '../models/Order.js';
+import { Payment } from '../models/Payment.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 function parseRange(req) {
@@ -237,6 +238,115 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
       filename: 'client-database',
       headers: ['Client', 'L3', 'Address', 'KYC', 'GSTIN', 'PAN', 'Contact', 'Email'],
       rows: rowsObj.map((r) => [r.client, r.level3, r.address, r.kyc, r.gstin, r.pan, r.contact, r.email]),
+    });
+  }
+  res.json({ rows: rowsObj });
+});
+
+// REPORT 4 — Order Database (Date-wise)
+export const orderReport = asyncHandler(async (req, res) => {
+  const filter = {};
+  const range = parseRange(req);
+  if (range) filter.createdAt = range;
+
+  const orders = await Order.find(filter)
+    .populate('client', 'clientName')
+    .populate('site', 'siteName')
+    .populate('grade', 'gradeCode')
+    .populate('createdByLevel3', 'name')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const rowsObj = orders.map((o) => ({
+    date: o.createdAt ? new Date(o.createdAt).toISOString() : '',
+    orderNumber: o.orderNumber,
+    client: o.client?.clientName || '',
+    site: o.site?.siteName || '',
+    grade: o.grade?.gradeCode || '',
+    quantity: o.quantity ?? '',
+    rate: o.negotiatedRate ?? '',
+    status: o.status,
+    level3: o.createdByLevel3?.name || '',
+  }));
+
+  const format = req.query.format || 'json';
+  if (format === 'xlsx') {
+    return writeExcel(res, {
+      title: 'Orders',
+      filename: 'orders',
+      columns: [
+        { header: 'Date', key: 'date', width: 24 },
+        { header: 'Order No', key: 'orderNumber', width: 16 },
+        { header: 'Client Name', key: 'client', width: 24 },
+        { header: 'Site', key: 'site', width: 18 },
+        { header: 'Grade', key: 'grade', width: 10 },
+        { header: 'Quantity', key: 'quantity', width: 12 },
+        { header: 'Rate', key: 'rate', width: 12 },
+        { header: 'Status', key: 'status', width: 14 },
+        { header: 'Level 3', key: 'level3', width: 20 },
+      ],
+      rows: rowsObj,
+    });
+  }
+  if (format === 'pdf') {
+    return writePdfTable(res, {
+      title: 'Order Report',
+      filename: 'orders',
+      headers: ['Date', 'Order No', 'Client', 'Site', 'Grade', 'Qty', 'Rate', 'Status', 'L3'],
+      rows: rowsObj.map((r) => [r.date, r.orderNumber, r.client, r.site, r.grade, r.quantity, r.rate, r.status, r.level3]),
+    });
+  }
+  res.json({ rows: rowsObj });
+});
+
+// REPORT 5 — Payment Database (Date-wise)
+export const paymentReport = asyncHandler(async (req, res) => {
+  const filter = {};
+  const range = parseRange(req);
+  if (range) filter.createdAt = range;
+
+  const payments = await Payment.find(filter)
+    .populate('client', 'clientName')
+    .populate('invoice', 'invoiceNumber')
+    .populate('recordedByLevel2', 'name')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const rowsObj = payments.map((p) => ({
+    date: p.createdAt ? new Date(p.createdAt).toISOString() : '',
+    client: p.client?.clientName || '',
+    invoice: p.invoice?.invoiceNumber || '',
+    amount: p.amount ?? '',
+    received: p.paymentReceived ? 'Yes' : 'No',
+    receivedAt: p.receivedAt ? new Date(p.receivedAt).toISOString() : '',
+    recordedBy: p.recordedByLevel2?.name || '',
+    remarks: p.remarks || '',
+  }));
+
+  const format = req.query.format || 'json';
+  if (format === 'xlsx') {
+    return writeExcel(res, {
+      title: 'Payments',
+      filename: 'payments',
+      columns: [
+        { header: 'Created Date', key: 'date', width: 24 },
+        { header: 'Client Name', key: 'client', width: 24 },
+        { header: 'Invoice', key: 'invoice', width: 18 },
+        { header: 'Amount', key: 'amount', width: 14 },
+        { header: 'Received', key: 'received', width: 10 },
+        { header: 'Received At', key: 'receivedAt', width: 24 },
+        { header: 'Recorded By', key: 'recordedBy', width: 20 },
+        { header: 'Remarks', key: 'remarks', width: 30 },
+      ],
+      rows: rowsObj,
+    });
+  }
+  if (format === 'pdf') {
+    return writePdfTable(res, {
+      title: 'Payment Report',
+      filename: 'payments',
+      headers: ['Date', 'Client', 'Invoice', 'Amount', 'Rcvd?', 'Received At', 'Recorded By'],
+      rows: rowsObj.map((r) => [r.date, r.client, r.invoice, r.amount, r.received, r.receivedAt, r.recordedBy]),
     });
   }
   res.json({ rows: rowsObj });

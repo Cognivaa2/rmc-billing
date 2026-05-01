@@ -38,7 +38,7 @@ export default function L1Payments() {
                     <span className="badge-gray">No</span>
                   )}
                 </td>
-                <td>{p.recordedByLevel1?.name}</td>
+                <td>{p.recordedByLevel2?.name || '—'}</td>
                 <td className="text-right">
                 </td>
               </tr>

@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { useLocation } from 'react-router-dom';
 import { payments, clients, invoices } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime, fmtMoney } from '../../utils/format.js';
 
 export default function L2Payments() {
   const qc = useQueryClient();
+  const { state } = useLocation();
   const [clientFilter, setClientFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(!!state?.prefill);
   const [editingPayment, setEditingPayment] = useState(null);
 
   const { data: paymentsData = { payments: [], totalPages: 1, page: 1 }, isLoading } = useQuery({
@@ -29,7 +31,12 @@ export default function L2Payments() {
   });
 
   const { register, handleSubmit, watch, reset } = useForm({
-    defaultValues: { paymentReceived: 'true' },
+    defaultValues: state?.prefill ? {
+      client: state.prefill.client,
+      invoice: state.prefill.invoice,
+      amount: state.prefill.amount,
+      paymentReceived: 'true',
+    } : { paymentReceived: 'true' },
   });
 
   const selectedClient = watch('client');

@@ -4,6 +4,8 @@ import {
   dailyDispatchReport,
   salesOrderReport,
   clientDatabaseReport,
+  orderReport,
+  paymentReport,
 } from '../controllers/report.controller.js';
 
 const router = Router();
@@ -14,5 +16,7 @@ router.use(authMiddleware, rbac(1));
 router.get('/daily-dispatch', dailyDispatchReport);
 router.get('/sales-orders', salesOrderReport);
 router.get('/clients', clientDatabaseReport);
+router.get('/orders', orderReport);
+router.get('/payments', paymentReport);
 
 export default router;

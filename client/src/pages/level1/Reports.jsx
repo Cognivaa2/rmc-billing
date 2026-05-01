@@ -21,6 +21,18 @@ const REPORTS = [
     fields: 'Client · L3 · Address · KYC · Tax Info · Contact · Email',
     dateable: false,
   },
+  {
+    id: 'orders',
+    title: 'Order Report',
+    fields: 'Date · Order No · Client · Site · Grade · Qty · Rate · Status · L3',
+    dateable: true,
+  },
+  {
+    id: 'payments',
+    title: 'Payment Report',
+    fields: 'Date · Client · Invoice · Amount · Received · Received At · Recorded By',
+    dateable: true,
+  },
 ];
 
 export default function L1Reports() {
@@ -63,7 +75,7 @@ export default function L1Reports() {
             onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
           />
         </div>
-        <div className="text-xs text-slate-500">Date filter applies to the Daily Dispatch report.</div>
+        <div className="text-xs text-slate-500">Date filter applies to date-aware reports.</div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

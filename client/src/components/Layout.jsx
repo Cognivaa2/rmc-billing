@@ -12,13 +12,14 @@ const NAV_BY_LEVEL = {
     { to: '/l1/payments', label: 'Payments', icon: 'coin' },
     { to: '/l1/reports', label: 'Reports', icon: 'chart' },
     { to: '/l1/users', label: 'Users', icon: 'user' },
-    { to: '/l1/admin', label: 'Admin', icon: 'trash' },
   ],
   2: [
     { to: '/l2', label: 'Dashboard', icon: 'grid' },
     { to: '/l2/clients', label: 'Clients', icon: 'users' },
     { to: '/l2/orders', label: 'Orders', icon: 'star' },
     { to: '/l2/sales-orders', label: 'Sales Orders', icon: 'deal' },
+    { to: '/l2/invoices', label: 'Invoices', icon: 'receipt' },
+    { to: '/l2/payments', label: 'Payments', icon: 'coin' },
   ],
   3: [
     { to: '/l3', label: 'Dashboard', icon: 'grid' },
