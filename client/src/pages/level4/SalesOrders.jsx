@@ -294,7 +294,7 @@ export default function L4SalesOrders() {
           so={dispatchTarget}
           onClose={() => { setDispatchTarget(null); setDispatchError(''); }}
           isPending={submitDispatch.isPending}
-          onSubmit={(soId, d) => submitDispatch.mutate({ soId, d })}
+          onSubmit={(soId, d) => submitDispatch.mutate({ soId, data: d })}
           error={dispatchError}
         />
       )}

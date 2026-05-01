@@ -74,7 +74,7 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
               <div className="p-3">
                 <div className="font-bold mb-1">Ship to:</div>
                 <div className="font-medium">{client?.clientName || ''}</div>
-                <div className="text-xs whitespace-pre-wrap text-gray-700">{dispatch?.site?.address || dispatch?.site?.siteName || ''}</div>
+                <div className="text-xs whitespace-pre-wrap text-gray-700">{dispatch?.site?.siteAddress || dispatch?.site?.siteName || ''}</div>
               </div>
             </div>
             

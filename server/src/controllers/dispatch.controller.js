@@ -26,7 +26,7 @@ export const createDispatchSchema = z.object({
 const populateDispatch = (q) =>
   q
     .populate('client', 'clientName officeAddress contactNumber email taxInformation')
-    .populate('site', 'siteName')
+    .populate('site', 'siteName siteAddress')
     .populate('grade', 'gradeCode description')
     .populate('order', 'orderNumber status negotiatedRate')
     .populate('salesOrder', 'soNumber status totalQuantity remainingQuantity')

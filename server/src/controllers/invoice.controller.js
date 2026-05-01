@@ -67,7 +67,7 @@ export const createInvoice = asyncHandler(async (req, res) => {
   const invoiceNumber = alloc.number;
 
   const order = dispatch.salesOrder || dispatch.order;
-  const rate = order?.negotiatedRate || 0;
+  const rate = dispatch.salesOrder?.rate || dispatch.order?.negotiatedRate || 0;
   const amount = rate * dispatch.quantity;
 
   const invoice = await Invoice.create({

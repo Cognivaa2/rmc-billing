@@ -49,7 +49,11 @@ export default function L4Batchsheets() {
   const selectedDispatchId = watch('dispatch');
   const selectedDispatch = dispatchList.find((d) => d._id === selectedDispatchId);
 
-  const eligibleDispatches = dispatchList.filter((d) => d.status === 'sale_authorized');
+  const eligibleDispatches = dispatchList.filter((d) => {
+    if (!['sale_authorized', 'invoiced'].includes(d.status)) return false;
+    const alreadyHasBatchsheet = list.some((b) => (b.dispatch?._id || b.dispatch) === d._id);
+    return !alreadyHasBatchsheet;
+  });
 
   useEffect(() => {
     if (selectedDispatch?.grade?.defaultMixDesign) {
