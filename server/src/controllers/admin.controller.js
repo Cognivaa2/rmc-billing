@@ -17,6 +17,8 @@ export const companySettingsSchema = z.object({
   dispatchAddress: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
+  pan: z.string().optional(),
+  udyamNo: z.string().optional(),
 });
 
 function buildDateFilter({ from, to }) {

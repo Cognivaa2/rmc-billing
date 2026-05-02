@@ -10,6 +10,8 @@ const companySettingsSchema = new mongoose.Schema(
     // Contact info for PDF headers
     phone: { type: String, default: '' },
     email: { type: String, default: '' },
+    pan: { type: String, default: '' },
+    udyamNo: { type: String, default: '' },
   },
   { timestamps: true },
 );

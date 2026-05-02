@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { invoices, dispatches, clients, companySettings } from '../../api/endpoints.js';
+import { invoices, dispatches, companySettings } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
-import InvoicePreviewModal from './InvoicePreviewModal.jsx';
 
 function newIdempotencyKey() {
   if (crypto?.randomUUID) return crypto.randomUUID();
@@ -12,7 +11,6 @@ function newIdempotencyKey() {
 
 export default function L4Invoices() {
   const qc = useQueryClient();
-  const [previewData, setPreviewData] = useState(null);
 
   const { data: invoicesList = [] } = useQuery({ queryKey: ['invoices'], queryFn: () => invoices.list() });
   const { data: ready = [] } = useQuery({
@@ -22,34 +20,24 @@ export default function L4Invoices() {
       return all.filter(d => ['sale_authorized', 'batchsheet'].includes(d.status));
     },
   });
-  const { data: settings = {} } = useQuery({
-    queryKey: ['company-settings'],
-    queryFn: () => companySettings.get(),
-  });
 
   useEffect(() => {
     qc.invalidateQueries({ queryKey: ['invoices'] });
   }, [qc]);
 
   const generate = async (dispatch, { showRate }) => {
-    const order = dispatch.order;
-    const client = dispatch.client;
-    const grade = dispatch.grade;
-
     try {
       const created = await invoices.create({
         dispatch: dispatch._id,
         showRateOnInvoice: showRate,
         idempotencyKey: newIdempotencyKey(),
       });
-      setPreviewData({
-        invoice: created,
-        dispatch,
-        client,
-        grade
-      });
+      
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: ['dispatches'] });
+      
+      // Open the PDF in a new tab immediately after generation
+      window.open(invoices.pdfUrl(created._id), '_blank');
     } catch (err) {
       console.error('Invoice Generation Error:', err.response?.data || err);
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to generate invoice. Please check your internet connection.';
@@ -57,25 +45,9 @@ export default function L4Invoices() {
     }
   };
 
-  const downloadExisting = async (inv) => {
-    try {
-      const full = await invoices.get(inv._id);
-      const clientDoc = await clients.get(full.client?._id || full.client);
-      setPreviewData({
-        invoice: full,
-        client: clientDoc,
-        dispatch: full.dispatch,
-        grade: full.grade
-      });
-    } catch (err) {
-      console.error('Failed to load invoice details:', err);
-      if (navigator.onLine) {
-        window.open(invoices.pdfUrl(inv._id), '_blank');
-      }
-    }
+  const downloadExisting = (inv) => {
+    window.open(invoices.pdfUrl(inv._id), '_blank');
   };
-
-
 
   return (
     <>
@@ -142,7 +114,7 @@ export default function L4Invoices() {
                     <td className="text-slate-600 whitespace-nowrap">{i.showRateOnInvoice ? fmtMoney(i.amount) : '—'}</td>
                     <td className="text-right">
                       <button className="text-xs font-medium text-brand-600 hover:text-brand-800 bg-brand-50 px-3 py-1.5 rounded transition-colors" onClick={() => downloadExisting(i)}>
-                        View
+                        View PDF
                       </button>
                     </td>
                   </tr>
@@ -155,17 +127,6 @@ export default function L4Invoices() {
           </div>
         </div>
       </div>
-
-      {previewData && (
-        <InvoicePreviewModal
-          invoice={previewData.invoice}
-          dispatch={previewData.dispatch}
-          client={previewData.client}
-          grade={previewData.grade}
-          settings={settings}
-          onClose={() => setPreviewData(null)}
-        />
-      )}
     </>
   );
 }
