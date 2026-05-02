@@ -139,27 +139,27 @@ export const salesOrderReport = asyncHandler(async (req, res) => {
     .lean();
 
   // latest dispatch against each SO for "Level 4 Name"
-  const orderIds = await Order.find({ salesOrder: { $in: sos.map((s) => s._id) } }).distinct('_id');
-  const latestDispatches = await DispatchForm.find({ order: { $in: orderIds } })
+  const latestDispatches = await DispatchForm.find({ salesOrder: { $in: sos.map((s) => s._id) } })
     .populate('filledByLevel4', 'name')
-    .populate({ path: 'order', select: 'salesOrder' })
+    .sort({ createdAt: -1 })
     .lean();
+
   const l4BySo = {};
   for (const d of latestDispatches) {
-    const soId = String(d.order?.salesOrder || '');
+    const soId = String(d.salesOrder || '');
     if (soId && !l4BySo[soId]) l4BySo[soId] = d.filledByLevel4?.name || '';
   }
 
   const rowsObj = sos.map((so) => ({
     client: so.client?.clientName || '',
     grade: so.grade?.gradeCode || '',
-    status: so.status,
+    status: (so.status || 'open').toUpperCase(),
     rate: so.rate,
     quantity: so.totalQuantity,
-    level4: l4BySo[String(so._id)] || '',
+    level4: l4BySo[String(so._id)] || '-',
     level2: so.createdByLevel2?.name || '',
-    kyc: so.client?.kycStatus || '',
-    credit: so.client?.creditStatus || '',
+    kyc: so.client?.kycStatus || 'pending',
+    credit: so.client?.creditStatus || 'regular',
     dispatchedQty: so.dispatchedQuantity,
     remainingQty: so.remainingQuantity,
   }));
@@ -186,12 +186,87 @@ export const salesOrderReport = asyncHandler(async (req, res) => {
     });
   }
   if (format === 'pdf') {
-    return writePdfTable(res, {
-      title: 'Sales Order Report',
-      filename: 'sales-orders',
-      headers: ['Client', 'Grade', 'Status', 'Rate', 'Qty', 'L4', 'L2', 'KYC', 'Credit', 'Disp.', 'Rem.'],
-      rows: rowsObj.map((r) => [r.client, r.grade, r.status, r.rate, r.quantity, r.level4, r.level2, r.kyc, r.credit, r.dispatchedQty, r.remainingQty]),
-    });
+    const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 40 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="sales-order-report.pdf"`);
+    doc.pipe(res);
+
+    const formatNum = (n) => (n != null ? Number(n).toLocaleString('en-US') : '-');
+    const toTitleCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+
+    const headers = ['Client', 'Grade', 'Status', 'Rate', 'Qty', 'L4', 'L2', 'KYC', 'Credit', 'Disp.', 'Rem.'];
+    const colWidths = [80, 35, 45, 45, 30, 60, 60, 45, 45, 40, 40];
+    const startX = 40;
+    const tableWidth = 515;
+
+    const drawHeader = () => {
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#334155').text('Sales Order Report', { align: 'center' });
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.moveTo(startX, doc.y).lineTo(startX + tableWidth, doc.y).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      doc.moveDown(1);
+    };
+
+    const drawTableHeader = (y) => {
+      doc.rect(startX, y - 5, tableWidth, 20).fill('#f1f5f9');
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#475569');
+      let curX = startX;
+      headers.forEach((h, i) => {
+        doc.text(h, curX + 3, y, { width: colWidths[i] - 5 });
+        curX += colWidths[i];
+      });
+      return y + 20;
+    };
+
+    const drawFooter = () => {
+      const footerY = doc.page.height - 50;
+      doc.save();
+      doc.moveTo(startX, footerY - 5).lineTo(startX + tableWidth, footerY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Confidential - Internal Business Use Only | Generated via Enterprise Dashboard', startX, footerY, { align: 'center', width: tableWidth });
+      doc.restore();
+    };
+
+    drawHeader();
+    let y = drawTableHeader(doc.y);
+
+    if (rowsObj.length === 0) {
+      doc.font('Helvetica').fontSize(9).text('No data available.', startX, y + 20);
+    } else {
+      doc.font('Helvetica').fontSize(7.5).fillColor('#1e293b');
+      for (const r of rowsObj) {
+        const rowData = [
+          r.client, r.grade, toTitleCase(r.status), formatNum(r.rate),
+          String(r.quantity), r.level4, r.level2, toTitleCase(r.kyc),
+          toTitleCase(r.credit), String(r.dispatchedQty), String(r.remainingQty),
+        ];
+
+        let maxRowHeight = 12;
+        rowData.forEach((text, i) => {
+          const h = doc.heightOfString(String(text || '-'), { width: colWidths[i] - 5 });
+          if (h > maxRowHeight) maxRowHeight = h;
+        });
+
+        if (y + maxRowHeight > doc.page.height - 70) {
+          drawFooter();
+          doc.addPage();
+          drawHeader();
+          y = drawTableHeader(doc.y);
+        }
+
+        let curX = startX;
+        rowData.forEach((text, i) => {
+          doc.text(String(text || '-'), curX + 3, y, { width: colWidths[i] - 5 });
+          curX += colWidths[i];
+        });
+
+        y += maxRowHeight + 5;
+        doc.moveTo(startX, y - 2).lineTo(startX + tableWidth, y - 2).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
+      }
+    }
+
+    drawFooter();
+    doc.end();
+    return;
   }
   res.json({ rows: rowsObj });
 });
@@ -232,13 +307,108 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
       rows: rowsObj,
     });
   }
+
   if (format === 'pdf') {
-    return writePdfTable(res, {
-      title: 'Client Database Report',
-      filename: 'client-database',
-      headers: ['Client', 'L3', 'Address', 'KYC', 'GSTIN', 'PAN', 'Contact', 'Email'],
-      rows: rowsObj.map((r) => [r.client, r.level3, r.address, r.kyc, r.gstin, r.pan, r.contact, r.email]),
-    });
+    const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 40 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="client-database-report.pdf"`);
+    doc.pipe(res);
+
+    const toTitleCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+
+    const headers = ['CLIENT NAME', 'LEVEL 3 NAME', 'OFFICE ADDRESS', 'KYC DATA', 'TAX INFO', 'CONTACT', 'EMAIL'];
+    const colWidths = [85, 65, 110, 55, 75, 60, 65];
+    const startX = 40;
+    const tableWidth = 515;
+
+    const drawHeader = () => {
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#1e293b').text('Client Database Report', { align: 'center' });
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}  •  Enterprise Client Management Module`, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.moveTo(startX, doc.y).lineTo(startX + tableWidth, doc.y).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      doc.moveDown(1);
+    };
+
+    const drawTableHeader = (y) => {
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#94a3b8');
+      let curX = startX;
+      headers.forEach((h, i) => {
+        doc.text(h, curX + 3, y, { width: colWidths[i] - 5 });
+        curX += colWidths[i];
+      });
+      doc.moveTo(startX, y + 12).lineTo(startX + tableWidth, y + 12).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
+      return y + 20;
+    };
+
+    const drawFooter = () => {
+      const footerY = doc.page.height - 50;
+      doc.save();
+      doc.moveTo(startX, footerY - 5).lineTo(startX + tableWidth, footerY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Confidential Document — Internal Use Only | Page 1 of 1', startX, footerY, { align: 'center', width: tableWidth });
+      doc.restore();
+    };
+
+    drawHeader();
+    let y = drawTableHeader(doc.y);
+
+    doc.fontSize(7.5).fillColor('#334155');
+    for (const r of rowsObj) {
+      const taxText = r.gstin ? `GSTIN:\n${r.gstin}` : (r.pan ? `PAN:\n${r.pan}` : '-');
+
+      // Calculate max height
+      const h1 = doc.heightOfString(r.client, { width: colWidths[0] - 5, font: 'Helvetica-Bold' });
+      const h2 = doc.heightOfString(r.address, { width: colWidths[2] - 5 });
+      const h3 = doc.heightOfString(taxText, { width: colWidths[4] - 5 });
+      const maxRowHeight = Math.max(h1, h2, h3, 20);
+
+      if (y + maxRowHeight > doc.page.height - 70) {
+        drawFooter();
+        doc.addPage();
+        drawHeader();
+        y = drawTableHeader(doc.y);
+      }
+
+      let curX = startX;
+
+      // Client Name (Bold)
+      doc.font('Helvetica-Bold').text(r.client, curX + 3, y, { width: colWidths[0] - 5 }); curX += colWidths[0];
+
+      // L3 Name
+      doc.font('Helvetica').text(r.level3, curX + 3, y, { width: colWidths[1] - 5 }); curX += colWidths[1];
+
+      // Address
+      doc.text(r.address, curX + 3, y, { width: colWidths[2] - 5 }); curX += colWidths[2];
+
+      // KYC Badge
+      const kycStatus = r.kyc?.toLowerCase() || 'pending';
+      const isVerified = kycStatus === 'verified' || kycStatus === 'approved';
+      const badgeColor = isVerified ? '#1d4ed8' : '#b45309';
+      const badgeBg = isVerified ? '#eff6ff' : '#fffbeb';
+
+      doc.save();
+      doc.roundedRect(curX + 5, y, 40, 10, 2).fill(badgeBg);
+      doc.fillColor(badgeColor).fontSize(6.5).font('Helvetica-Bold').text(toTitleCase(kycStatus), curX + 5, y + 2, { width: 40, align: 'center' });
+      doc.restore();
+      curX += colWidths[3];
+
+      // Tax Info
+      doc.fontSize(7.5).font('Helvetica').fillColor('#64748b').text('GSTIN:', curX + 3, y);
+      doc.fillColor('#334155').font('Helvetica-Bold').text(r.gstin || r.pan || '-', curX + 3, y + 9, { width: colWidths[4] - 5 });
+      curX += colWidths[4];
+
+      // Contact
+      doc.font('Helvetica').fillColor('#334155').text(r.contact, curX + 3, y, { width: colWidths[5] - 5 }); curX += colWidths[5];
+
+      // Email
+      doc.text(r.email, curX + 3, y, { width: colWidths[6] - 5 }); curX += colWidths[6];
+
+      y += maxRowHeight + 15;
+      doc.moveTo(startX, y - 5).lineTo(startX + tableWidth, y - 5).strokeColor('#f8fafc').lineWidth(0.5).stroke();
+    }
+
+    drawFooter();
+    doc.end();
+    return;
   }
   res.json({ rows: rowsObj });
 });
@@ -342,12 +512,103 @@ export const paymentReport = asyncHandler(async (req, res) => {
     });
   }
   if (format === 'pdf') {
-    return writePdfTable(res, {
-      title: 'Payment Report',
-      filename: 'payments',
-      headers: ['Date', 'Client', 'Invoice', 'Amount', 'Rcvd?', 'Received At', 'Recorded By'],
-      rows: rowsObj.map((r) => [r.date, r.client, r.invoice, r.amount, r.received, r.receivedAt, r.recordedBy]),
-    });
+    const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 40 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="payment-report.pdf"`);
+    doc.pipe(res);
+
+    const formatNum = (n) => (n != null ? Number(n).toLocaleString('en-US') : '-');
+    const toTitleCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+
+    const headers = ['DATE', 'CLIENT NAME', 'INVOICE', 'AMOUNT', 'STATUS', 'RCVD AT', 'BY'];
+    const colWidths = [65, 100, 70, 70, 60, 75, 75];
+    const startX = 40;
+    const tableWidth = 515;
+
+    const drawHeader = () => {
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#1e293b').text('Payment History Report', { align: 'center' });
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}  •  Enterprise Financial Module`, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.moveTo(startX, doc.y).lineTo(startX + tableWidth, doc.y).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      doc.moveDown(1);
+    };
+
+    const drawTableHeader = (y) => {
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#94a3b8');
+      let curX = startX;
+      headers.forEach((h, i) => {
+        doc.text(h, curX + 3, y, { width: colWidths[i] - 5 });
+        curX += colWidths[i];
+      });
+      doc.moveTo(startX, y + 12).lineTo(startX + tableWidth, y + 12).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
+      return y + 20;
+    };
+
+    const drawFooter = () => {
+      const footerY = doc.page.height - 50;
+      doc.save();
+      doc.moveTo(startX, footerY - 5).lineTo(startX + tableWidth, footerY - 5).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+      doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text('Confidential Financial Document — Internal Use Only | Page 1 of 1', startX, footerY, { align: 'center', width: tableWidth });
+      doc.restore();
+    };
+
+    drawHeader();
+    let y = drawTableHeader(doc.y);
+
+    doc.fontSize(7.5).fillColor('#334155');
+    for (const r of rowsObj) {
+      // Calculate max height
+      const h1 = doc.heightOfString(r.client, { width: colWidths[1] - 5, font: 'Helvetica-Bold' });
+      const h2 = doc.heightOfString(r.recordedBy, { width: colWidths[6] - 5 });
+      const maxRowHeight = Math.max(h1, h2, 20);
+
+      if (y + maxRowHeight > doc.page.height - 70) {
+        drawFooter();
+        doc.addPage();
+        drawHeader();
+        y = drawTableHeader(doc.y);
+      }
+
+      let curX = startX;
+
+      // Date
+      doc.font('Helvetica').text(formatDate(r.date), curX + 3, y, { width: colWidths[0] - 5 }); curX += colWidths[0];
+
+      // Client (Bold)
+      doc.font('Helvetica-Bold').text(r.client, curX + 3, y, { width: colWidths[1] - 5 }); curX += colWidths[1];
+
+      // Invoice
+      doc.font('Helvetica').text(r.invoice || '-', curX + 3, y, { width: colWidths[2] - 5 }); curX += colWidths[2];
+
+      // Amount
+      doc.font('Helvetica-Bold').text(formatNum(r.amount), curX + 3, y, { width: colWidths[3] - 5 }); curX += colWidths[3];
+
+      // Status Badge
+      const isReceived = r.received === 'Yes';
+      const badgeColor = isReceived ? '#15803d' : '#b91c1c';
+      const badgeBg = isReceived ? '#dcfce7' : '#fee2e2';
+      const statusText = isReceived ? 'Success' : 'Pending';
+
+      doc.save();
+      doc.roundedRect(curX + 5, y, 40, 10, 2).fill(badgeBg);
+      doc.fillColor(badgeColor).fontSize(6.5).font('Helvetica-Bold').text(statusText, curX + 5, y + 2, { width: 40, align: 'center' });
+      doc.restore();
+      curX += colWidths[4];
+
+      // Received At
+      doc.font('Helvetica').fillColor('#64748b').text(formatDate(r.receivedAt), curX + 3, y, { width: colWidths[5] - 5 }); curX += colWidths[5];
+
+      // Recorded By
+      doc.fillColor('#334155').text(r.recordedBy, curX + 3, y, { width: colWidths[6] - 5 }); curX += colWidths[6];
+
+      y += maxRowHeight + 15;
+      doc.moveTo(startX, y - 5).lineTo(startX + tableWidth, y - 5).strokeColor('#f8fafc').lineWidth(0.5).stroke();
+    }
+
+    drawFooter();
+    doc.end();
+    return;
   }
   res.json({ rows: rowsObj });
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../api/client.js';
 import { invoices, dispatches, companySettings } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
@@ -25,6 +26,22 @@ export default function L4Invoices() {
     qc.invalidateQueries({ queryKey: ['invoices'] });
   }, [qc]);
 
+  const viewPdf = async (id) => {
+    try {
+      const url = invoices.pdfUrl(id);
+      // Fetch the PDF with credentials via axios
+      const response = await api.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      // Note: we don't revoke the URL immediately so the tab can load it.
+      // In a real app, you might want to manage this better.
+    } catch (err) {
+      console.error('Failed to load PDF:', err);
+      alert('Failed to load PDF. Please ensure you are logged in.');
+    }
+  };
+
   const generate = async (dispatch, { showRate }) => {
     try {
       const created = await invoices.create({
@@ -32,12 +49,12 @@ export default function L4Invoices() {
         showRateOnInvoice: showRate,
         idempotencyKey: newIdempotencyKey(),
       });
-      
+
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: ['dispatches'] });
-      
-      // Open the PDF in a new tab immediately after generation
-      window.open(invoices.pdfUrl(created._id), '_blank');
+
+      // Use the helper to fetch and view
+      await viewPdf(created._id);
     } catch (err) {
       console.error('Invoice Generation Error:', err.response?.data || err);
       const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to generate invoice. Please check your internet connection.';
@@ -46,7 +63,7 @@ export default function L4Invoices() {
   };
 
   const downloadExisting = (inv) => {
-    window.open(invoices.pdfUrl(inv._id), '_blank');
+    viewPdf(inv._id);
   };
 
   return (

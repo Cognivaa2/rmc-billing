@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
+import { api } from '../../api/client.js';
 import { batchsheets, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime } from '../../utils/format.js';
@@ -66,15 +67,22 @@ export default function L4Batchsheets() {
   });
 
   useEffect(() => {
-    if (selectedDispatch?.grade?.defaultMixDesign) {
-      const mix = selectedDispatch.grade.defaultMixDesign;
-      setValue('mix.recipeCode', selectedDispatch.grade.gradeCode);
-      setValue('mix.recipeName', selectedDispatch.grade.gradeCode);
-      MATERIALS.forEach(({ key }) => {
-        if (mix[key]) setValue(`mix.target_${key}`, mix[key]);
-      });
+    // Only auto-fill if we are NOT editing an existing batchsheet
+    if (!editingId && selectedDispatch) {
+      if (selectedDispatch.grade?.defaultMixDesign) {
+        const mix = selectedDispatch.grade.defaultMixDesign;
+        setValue('mix.recipeCode', selectedDispatch.grade.gradeCode);
+        setValue('mix.recipeName', selectedDispatch.grade.gradeCode);
+        MATERIALS.forEach(({ key }) => {
+          if (mix[key]) setValue(`mix.target_${key}`, mix[key]);
+        });
+      }
+      // Auto-fill Truck Driver from Dispatch
+      if (selectedDispatch.driverName) {
+        setValue('mix.truckDriver', selectedDispatch.driverName);
+      }
     }
-  }, [selectedDispatchId, selectedDispatch, setValue]);
+  }, [selectedDispatchId, selectedDispatch, setValue, editingId]);
 
   const create = useMutation({
     mutationFn: (d) =>
@@ -85,7 +93,7 @@ export default function L4Batchsheets() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['batchsheets'] });
-      reset({ dispatch: '', batches: [{}] });
+      reset({ dispatch: '', batches: [{}], mix: {} });
     },
   });
 
@@ -94,17 +102,18 @@ export default function L4Batchsheets() {
       batchsheets.update(id, { mixDesignData: { ...d.mix, batches: d.batches } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['batchsheets'] });
-      reset({ dispatch: '', batches: [{}] });
+      reset({ dispatch: '', batches: [{}], mix: {} });
       setEditingId(null);
     },
   });
 
   const handleEdit = (b) => {
     setEditingId(b._id);
+    const { batches, ...restMix } = b.mixDesignData || {};
     reset({
       dispatch: b.dispatch?._id,
-      ...b.mixDesignData,
-      batches: b.mixDesignData?.batches || [{}],
+      mix: restMix,
+      batches: batches || [{}],
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -123,6 +132,19 @@ export default function L4Batchsheets() {
   };
 
   const isBusy = create.isPending || update.isPending;
+
+  const viewPdf = async (id) => {
+    try {
+      const url = batchsheets.pdfUrl(id);
+      const response = await api.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      console.error('Failed to load PDF:', err);
+      alert('Failed to load PDF.');
+    }
+  };
 
   return (
     <>
@@ -199,7 +221,7 @@ export default function L4Batchsheets() {
                 </div>
                 <div>
                   <label className="label text-[11px]">Truck Driver</label>
-                  <input className="input py-1.5 text-sm" {...register('mix.truckDriver')} />
+                  <input className="input py-1.5 text-sm bg-slate-50" {...register('mix.truckDriver')} readOnly />
                 </div>
                 <div>
                   <label className="label text-[11px]">Adj / Manual Qty</label>
@@ -303,14 +325,12 @@ export default function L4Batchsheets() {
                       >
                         Edit
                       </button>
-                      <a
-                        className="text-xs font-medium text-slate-500 hover:text-slate-700 bg-slate-100 px-3 py-1 rounded transition-colors"
-                        href={batchsheets.pdfUrl(b._id)}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        className="text-xs font-medium text-slate-500 hover:text-slate-700 bg-slate-100 px-3 py-1 rounded transition-colors text-center"
+                        onClick={() => viewPdf(b._id)}
                       >
                         PDF
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
