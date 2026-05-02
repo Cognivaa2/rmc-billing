@@ -1,6 +1,5 @@
 import PDFDocument from 'pdfkit';
 
-
 export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchsheet }) {
   const doc = new PDFDocument({
     size: 'A4',
@@ -14,96 +13,77 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
   const mix = batchsheet?.mixDesignData || {};
   const batches = mix.batches || [];
 
-  // Helper to sum actual values across all cycles
-  const getActual = (key) => {
-    return batches.reduce((sum, b) => sum + (parseFloat(b[key]) || 0), 0);
-  };
-
+  const getActual = (key) => batches.reduce((sum, b) => sum + (parseFloat(b[key]) || 0), 0);
   const getTarget = (key) => parseFloat(mix[`target_${key}`]) || 0;
 
-  // ── Colors & Styles ───────────────────────────────────────────────
   const COLORS = {
     headerBg: '#000000',
     headerText: '#ffffff',
     rowEven: '#ffffff',
     rowOdd: '#f8fafc',
-    border: '#cbd5e1',
-    textMain: '#1e293b',
-    textDim: '#64748b',
+    border: '#e2e8f0',
+    textMain: '#000000',
+    textDim: '#475569',
   };
 
   // ── Header ────────────────────────────────────────────────────────
-  doc
-    .font('Helvetica')
-    .fontSize(7)
-    .fillColor(COLORS.textDim)
-    .text(`AUTOGRAPHIC RECORD  ·  PLANT SERIAL NUMBER: ${mix.plantSerialNumber || 'BP-1'}`, LEFT, 35, { align: 'center', width: W });
+  doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.textDim)
+    .text(`AUTOGRAPHIC RECORD  ·  PLANT SERIAL NUMBER: ${mix.plantSerialNumber || 'BP-1'}`, LEFT, 25, { align: 'center', width: W });
 
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(16)
-    .fillColor(COLORS.textMain)
-    .text('DOCKET / BATCH REPORT', LEFT, 48, { align: 'center', width: W });
+  doc.font('Helvetica-Bold').fontSize(18).fillColor(COLORS.textMain)
+    .text('DOCKET / BATCH REPORT', LEFT, 38, { align: 'center', width: W });
 
-  const subHeader = `Enterprise Construction Management System  |  Dispatch: ${dispatch?.dispatchNumber || 'N/A'}  |  Date: ${dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}`;
-  doc
-    .font('Helvetica')
-    .fontSize(7)
-    .fillColor(COLORS.textDim)
-    .text(subHeader, LEFT, 68, { align: 'center', width: W });
+  const dispatchNo = dispatch?.dispatchNumber || '—';
+  const batchDate = dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+  const subHeader = `Enterprise Construction Management System  |  Dispatch: ${dispatchNo}  |  Date: ${batchDate}`;
 
-  doc.moveTo(LEFT, 78).lineTo(LEFT + W, 78).strokeColor(COLORS.textMain).lineWidth(1).stroke();
+  doc.font('Helvetica').fontSize(8).fillColor(COLORS.textDim)
+    .text(subHeader, LEFT, 58, { align: 'center', width: W });
 
-  let y = 88;
+  doc.moveTo(LEFT, 72).lineTo(LEFT + W, 72).strokeColor(COLORS.textMain).lineWidth(1.2).stroke();
 
-  // ── General Information Grid ─────────────────────────────────────
-  const infoRowH = 14;
-  const col1X = LEFT;
-  const col2X = LEFT + W / 2 + 10;
-  const labelW = 90;
+  let y = 85;
 
-  const drawInfoRow = (label, value, x, currentY, isHeader = false) => {
+  // ── Info Grid ───────────────────────────────────────────────────
+  const drawInfoGrid = (label, value, x, currentY, isHeader = false) => {
     if (isHeader) {
-      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(COLORS.textMain).text(label, x, currentY);
-      doc.moveTo(x, currentY + 11).lineTo(x + W / 2 - 10, currentY + 11).strokeColor(COLORS.textMain).lineWidth(0.8).stroke();
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.textMain).text(label, x, currentY);
+      doc.moveTo(x, currentY + 11).lineTo(x + (W / 2) - 10, currentY + 11).strokeColor(COLORS.textMain).lineWidth(0.8).stroke();
       return currentY + 18;
     }
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLORS.textMain).text(label, x, currentY, { width: labelW, lineBreak: false });
-    doc.font('Helvetica').fontSize(7.5).fillColor(COLORS.textMain).text(value || '—', x + labelW, currentY, { width: W / 2 - labelW - 10, lineBreak: false });
-    return currentY + infoRowH;
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.textMain).text(label, x, currentY, { width: 100 });
+    doc.font('Helvetica').fontSize(8).fillColor(COLORS.textMain).text(value || '—', x + 105, currentY, { width: (W / 2) - 115 });
+    return currentY + 14;
   };
 
-  // Left Column
   let ly = y;
-  ly = drawInfoRow('GENERAL INFORMATION', null, col1X, ly, true);
-  ly = drawInfoRow('Batch Number', dispatch?.dispatchNumber || mix.batchNumber, col1X, ly);
-  ly = drawInfoRow('Order Number', dispatch?.order?.orderNumber || mix.orderNumber, col1X, ly);
-  ly = drawInfoRow('Batch Date', dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleDateString('en-GB') : '—', col1X, ly);
+  ly = drawInfoGrid('GENERAL INFORMATION', null, LEFT, ly, true);
+  ly = drawInfoGrid('Batch Number', dispatchNo, LEFT, ly);
+  ly = drawInfoGrid('Order Number', dispatch?.salesOrder?.orderNumber || '—', LEFT, ly);
+  ly = drawInfoGrid('Batch Date', batchDate, LEFT, ly);
 
-  const startTime = dispatch?.dispatchDateTime ? new Date(new Date(dispatch.dispatchDateTime).getTime() - 15 * 60000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
-  const endTime = dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
-  const bTime = (startTime && endTime) ? `${startTime} - ${endTime}` : '—';
-  ly = drawInfoRow('Batch Time', bTime, col1X, ly);
-  ly = drawInfoRow('Batcher Name', mix.batcherName, col1X, ly);
-  ly = drawInfoRow('Customer', client?.clientName || '—', col1X, ly);
-  ly = drawInfoRow('Site', dispatch?.site?.siteName || mix.site, col1X, ly);
-  ly = drawInfoRow('Grade of Concrete', grade?.gradeCode || '—', col1X, ly);
+  const startTime = dispatch?.dispatchDateTime ? new Date(new Date(dispatch.dispatchDateTime).getTime() - 15 * 60000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+  const endTime = dispatch?.dispatchDateTime ? new Date(dispatch.dispatchDateTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+  ly = drawInfoGrid('Batch Time', `${startTime} - ${endTime}`, LEFT, ly);
+  ly = drawInfoGrid('Batcher Name', mix.batcherName, LEFT, ly);
+  ly = drawInfoGrid('Customer', client?.clientName, LEFT, ly);
+  ly = drawInfoGrid('Site', dispatch?.site?.siteName || mix.site, LEFT, ly);
+  ly = drawInfoGrid('Grade of Concrete', grade?.gradeCode, LEFT, ly);
 
-  // Right Column
   let ry = y;
-  ry = drawInfoRow('DELIVERY & PRODUCTION DETAILS', null, col2X, ry, true);
-  ry = drawInfoRow('Recipe Code', mix.recipeCode || grade?.gradeCode, col2X, ry);
-  ry = drawInfoRow('Recipe Name', mix.recipeName || grade?.gradeCode, col2X, ry);
-  ry = drawInfoRow('Ordered Quantity', dispatch?.quantity ? `${dispatch.quantity}` : '—', col2X, ry);
-  ry = drawInfoRow('Production Quantity', dispatch?.quantity ? `${dispatch.quantity}` : '—', col2X, ry);
-  ry = drawInfoRow('With This Load', dispatch?.quantity ? `${dispatch.quantity}` : '—', col2X, ry);
-  ry = drawInfoRow('Truck Number', dispatch?.vehicleNumber || mix.truckNumber, col2X, ry);
-  ry = drawInfoRow('Truck Driver', mix.truckDriver, col2X, ry);
-  ry = drawInfoRow('Adj / Manual Quantity', mix.adjQuantity, col2X, ry);
+  ry = drawInfoGrid('DELIVERY & PRODUCTION DETAILS', null, LEFT + (W / 2) + 10, ry, true);
+  ry = drawInfoGrid('Recipe Code', mix.recipeCode || grade?.gradeCode, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('Recipe Name', mix.recipeName || grade?.gradeCode, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('Ordered Quantity', dispatch?.quantity, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('Production Quantity', dispatch?.quantity, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('With This Load', dispatch?.quantity, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('Truck Number', dispatch?.vehicleNumber || mix.truckNumber, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('Truck Driver', mix.truckDriver, LEFT + (W / 2) + 10, ry);
+  ry = drawInfoGrid('Adj / Manual Quantity', mix.adjQuantity, LEFT + (W / 2) + 10, ry);
 
   y = Math.max(ly, ry) + 15;
 
-  // ── Material Tables Sections ─────────────────────────────────────
+  // ── Sections ─────────────────────────────────────────────────────
   const SECTIONS = [
     {
       title: '1. AGGREGATE DETAILS',
@@ -148,71 +128,52 @@ export function renderBatchsheetPdf(stream, { dispatch, client, grade, batchshee
     }
   ];
 
-  const tableW = (W / 2) - 5;
-  const cellW = tableW / 4;
-  const rowH = 15;
+  const colW = W / 4;
+  const rowH = 16;
 
-  const drawSection = (section, x, startY) => {
+  const drawSection = (section, startY) => {
     let curY = startY;
-
-    // Title
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORS.textMain).text(section.title, x, curY, { lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor(COLORS.textMain).text(section.title, LEFT, curY);
     curY += 12;
 
-    // Header
-    doc.rect(x, curY, tableW, rowH).fill(COLORS.headerBg);
+    doc.rect(LEFT, curY, W, rowH).fill(COLORS.headerBg);
     section.cols.forEach((col, i) => {
-      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.headerText)
-        .text(col, x + i * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLORS.headerText)
+        .text(col, LEFT + (i * colW), curY + 4, { width: colW, align: 'center' });
     });
     curY += rowH;
 
-    // Rows
     section.items.forEach((item, idx) => {
-      if (idx % 2 === 1) {
-        doc.rect(x, curY, tableW, rowH).fill('#f1f5f9');
-      }
-      doc.rect(x, curY, tableW, rowH).strokeColor(COLORS.border).lineWidth(0.2).stroke();
+      if (idx % 2 === 1) doc.rect(LEFT, curY, W, rowH).fill('#f8fafc');
+      doc.rect(LEFT, curY, W, rowH).strokeColor(COLORS.border).lineWidth(0.2).stroke();
 
-      const target = getTarget(item.key);
-      const actual = getActual(item.key);
-
-      doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.textMain).text(item.label, x + 5, curY + 4, { width: cellW - 5, lineBreak: false });
-      doc.font('Helvetica').fontSize(7).fillColor(COLORS.textMain).text(target || '0', x + cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
-      doc.font('Helvetica').fontSize(7).fillColor(COLORS.textMain).text(actual || '0', x + 2 * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
-      doc.font('Helvetica').fontSize(7).fillColor(COLORS.textMain).text('', x + 3 * cellW, curY + 4, { width: cellW, align: 'center', lineBreak: false });
-
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLORS.textMain).text(item.label, LEFT + 8, curY + 4, { width: colW - 10 });
+      doc.font('Helvetica').fontSize(7.5).text(getTarget(item.key) || '0', LEFT + colW, curY + 4, { width: colW, align: 'center' });
+      doc.font('Helvetica').text(getActual(item.key) || '0', LEFT + (2 * colW), curY + 4, { width: colW, align: 'center' });
+      doc.font('Helvetica').text('', LEFT + (3 * colW), curY + 4, { width: colW, align: 'center' });
       curY += rowH;
     });
 
-    return curY;
+    return curY + 12;
   };
 
-  // Row 1: Aggregates and Cement
-  const y1 = drawSection(SECTIONS[0], LEFT, y);
-  const y2 = drawSection(SECTIONS[1], LEFT + W / 2 + 5, y);
+  SECTIONS.forEach(s => {
+    if (y > doc.page.height - 150) {
+      doc.addPage();
+      y = 35;
+    }
+    y = drawSection(s, y);
+  });
 
-  y = Math.max(y1, y2) + 15;
+  doc.font('Helvetica-Oblique').fontSize(7).fillColor(COLORS.textDim)
+    .text('* Target and Actual values include moisture correction / absorption in % and other corrections in Kgs where applicable.', LEFT, y);
 
-  // Row 2: Water and Admixtures
-  const y3 = drawSection(SECTIONS[2], LEFT, y);
-  const y4 = drawSection(SECTIONS[3], LEFT + W / 2 + 5, y);
-
-  y = Math.max(y3, y4) + 10;
-
-  // ── Footer Note ───────────────────────────────────────────────────
-  doc.font('Helvetica-Oblique').fontSize(6.5).fillColor(COLORS.textDim)
-    .text('* Target and Actual values include moisture correction / absorption in % and other corrections in Kgs where applicable.', LEFT, y, { lineBreak: false });
-
-  // ── Page Footer ───────────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────────
   const footerY = doc.page.height - 35;
   doc.moveTo(LEFT, footerY - 5).lineTo(LEFT + W, footerY - 5).strokeColor(COLORS.border).lineWidth(0.5).stroke();
-
-  const now = new Date().toLocaleString('en-GB', { hour12: true });
-  const footerLeft = `Generated: ${now}  |  Dispatch: ${dispatch?.dispatchNumber || '—'}  |  Vehicle: ${dispatch?.vehicleNumber || '—'}`;
-
-  doc.font('Helvetica').fontSize(6.5).fillColor(COLORS.textDim).text(footerLeft, LEFT, footerY, { lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(COLORS.textMain).text('Page 1 of 1', LEFT, footerY, { align: 'right', width: W, lineBreak: false });
+  const footerText = `Generated: ${new Date().toLocaleString()} | Dispatch: ${dispatchNo} | Vehicle: ${dispatch?.vehicleNumber || '—'}`;
+  doc.font('Helvetica').fontSize(7).fillColor(COLORS.textDim).text(footerText, LEFT, footerY);
+  doc.font('Helvetica-Bold').fontSize(7).fillColor(COLORS.textMain).text('Page 1 of 1', LEFT, footerY, { align: 'right', width: W });
 
   doc.end();
 }
