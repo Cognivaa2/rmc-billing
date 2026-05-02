@@ -42,6 +42,12 @@ const ExcelIcon = () => (
   </svg>
 );
 
+const COLOR_MAP = {
+  blue: 'bg-blue-500',
+  indigo: 'bg-indigo-500',
+  emerald: 'bg-emerald-500'
+};
+
 export default function L1Reports() {
   const [range, setRange] = useState({ from: '', to: '' });
 
@@ -69,7 +75,7 @@ export default function L1Reports() {
             <h3 className="text-sm font-semibold text-slate-900 mb-1">Global Date Filter</h3>
             <p className="text-xs text-slate-500">Applies to date-sensitive reports like Payments.</p>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative">
               <label className="absolute -top-2 left-3 px-1 bg-white text-[10px] font-medium text-slate-400">FROM</label>
@@ -89,7 +95,7 @@ export default function L1Reports() {
                 onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
               />
             </div>
-            <button 
+            <button
               className="text-xs text-blue-600 font-medium hover:underline"
               onClick={() => setRange({ from: '', to: '' })}
             >
@@ -102,13 +108,13 @@ export default function L1Reports() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {REPORTS.map((r) => (
           <div key={r.id} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col">
-            <div className={`h-2 w-full bg-${r.color}-500`} />
+            <div className={`h-2 w-full ${COLOR_MAP[r.color] || 'bg-slate-500'}`} />
             <div className="p-6 flex-1 flex flex-col">
               <h3 className="text-lg font-bold text-slate-900">{r.title}</h3>
               <p className="mt-2 text-sm text-slate-500 leading-relaxed flex-1">
                 {r.description}
               </p>
-              
+
               <div className="mt-6 space-y-4">
                 <div className="flex flex-wrap gap-1.5">
                   {r.fields.slice(0, 4).map(f => (
@@ -122,13 +128,13 @@ export default function L1Reports() {
                 </div>
 
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     className="flex-1 h-10 flex items-center justify-center rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
                     onClick={() => download(r.id, 'pdf')}
                   >
                     <PdfIcon /> PDF
                   </button>
-                  <button 
+                  <button
                     className="flex-1 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
                     onClick={() => download(r.id, 'xlsx')}
                   >
