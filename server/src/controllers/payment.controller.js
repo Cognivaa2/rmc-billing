@@ -3,6 +3,7 @@ import { Payment } from '../models/Payment.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { notifyLevels } from '../services/notification.service.js';
+import { Client } from '../models/Client.js';
 
 export const paymentSchema = z.object({
   client: z.string(),
@@ -15,10 +16,22 @@ export const paymentSchema = z.object({
 });
 
 export const listPayments = asyncHandler(async (req, res) => {
-  const { client, page, limit } = req.query;
+  const { client, q, page, limit, status } = req.query;
   const filter = {};
+
   if (client) filter.client = client;
-  
+
+  if (status === 'received') filter.paymentReceived = true;
+  if (status === 'pending') filter.paymentReceived = { $ne: true };
+
+  if (q) {
+    const matchingClients = await Client.find({
+      clientName: { $regex: q, $options: 'i' }
+    }).select('_id');
+    const clientIds = matchingClients.map(c => c._id);
+    filter.client = { $in: clientIds };
+  }
+
   let query = Payment.find(filter)
     .populate('client', 'clientName')
     .populate('invoice', 'invoiceNumber amount')
@@ -27,16 +40,12 @@ export const listPayments = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 });
 
   const total = await Payment.countDocuments(filter);
-  let totalPages = 1;
-  let currentPage = 1;
+  const limitNum = parseInt(limit, 10) || 10;
+  const currentPage = parseInt(page, 10) || 1;
+  const skip = (currentPage - 1) * limitNum;
 
-  if (page || limit) {
-    currentPage = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 6;
-    const skip = (currentPage - 1) * limitNum;
-    query = query.skip(skip).limit(limitNum);
-    totalPages = Math.ceil(total / limitNum);
-  }
+  query = query.skip(skip).limit(limitNum);
+  const totalPages = Math.ceil(total / limitNum);
 
   const payments = await query;
   res.json({ payments, total, page: currentPage, totalPages });

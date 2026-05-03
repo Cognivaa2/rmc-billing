@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { orders, dispatches, salesOrders, clients, payments } from '../../api/endpoints.js';
+import { orders, dispatches, salesOrders, clients, payments, invoices } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { KpiCard } from '../../components/KpiCard.jsx';
 import { statusBadge, fmtDateTime, fmtMoney } from '../../utils/format.js';
@@ -22,21 +23,50 @@ export default function L2Dashboard() {
     queryKey: ['clients'],
     queryFn: () => clients.list(),
   });
-  const { data: paymentList = [] } = useQuery({
-    queryKey: ['payments'],
-    queryFn: () => payments.list(),
+  const { data: paymentsList = [] } = useQuery({
+    queryKey: ['payments_all'],
+    queryFn: () => payments.list({ limit: 10000 }),
+  });
+  const { data: invoicesList = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => invoices.list(),
   });
 
+  const allPaymentRecords = useMemo(() => {
+    const paidInvoiceIds = new Set(
+      paymentsList
+        .filter((p) => p.paymentReceived && p.invoice)
+        .map((p) => p.invoice._id || p.invoice)
+    );
+
+    const virtualPayments = invoicesList
+      .filter((inv) => !paidInvoiceIds.has(inv._id))
+      .map((inv) => ({
+        _id: 'v_' + inv._id,
+        isVirtual: true,
+        createdAt: inv.generatedAt,
+        client: inv.client,
+        invoice: inv,
+        amount: inv.amount,
+        paymentReceived: false,
+        recordedByLevel2: null,
+      }));
+
+    const combined = [...paymentsList, ...virtualPayments];
+    combined.sort((a, b) => new Date(b.createdAt || b.receivedAt || Date.now()) - new Date(a.createdAt || a.receivedAt || Date.now()));
+    return combined;
+  }, [paymentsList, invoicesList]);
+
   const pendingKyc = clientsList.filter((c) => c.kycStatus !== 'verified').length;
-  const receivedPaymentSum = paymentList.filter((p) => p.paymentReceived).reduce((a, b) => a + (b.amount || 0), 0);
-  const pendingPaymentSum = paymentList.filter((p) => !p.paymentReceived).reduce((a, b) => a + (b.amount || 0), 0);
-  const unpaidCount = paymentList.filter((p) => !p.paymentReceived).length;
+  const receivedPaymentSum = allPaymentRecords.filter((p) => p.paymentReceived).reduce((a, b) => a + (b.amount || 0), 0);
+  const pendingPaymentSum = allPaymentRecords.filter((p) => !p.paymentReceived).reduce((a, b) => a + (b.amount || 0), 0);
+  const unpaidCount = allPaymentRecords.filter((p) => !p.paymentReceived).length;
 
   return (
     <>
       <PageHeader title="Manager Overview" subtitle="Approvals, clients, dispatches, and payments." />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <KpiCard
           title="Pending Approval"
           value={pending.length}
@@ -48,7 +78,7 @@ export default function L2Dashboard() {
         <KpiCard
           title="Total Received Payment"
           value={fmtMoney(receivedPaymentSum)}
-          hint={`${paymentList.filter(p => p.paymentReceived).length} records`}
+          hint={`${allPaymentRecords.filter(p => p.paymentReceived).length} records`}
           to="/l2/payments"
         />
         <KpiCard
@@ -57,12 +87,6 @@ export default function L2Dashboard() {
           hint="Fully closed sales orders"
           to="/l2/sales-orders"
           state={{ filter: 'closed' }}
-        />
-        <KpiCard
-          title="Total Pending KYC"
-          value={pendingKyc}
-          hint={`of ${clientsList.length} clients`}
-          to="/l2/clients"
         />
         <KpiCard
           title="Not Received / Pending Payment"
@@ -125,31 +149,6 @@ export default function L2Dashboard() {
           </table>
         </div>
 
-        {/* Clients needing KYC */}
-        <div className="card">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div className="font-semibold">Clients pending KYC</div>
-            <Link to="/l2/clients" className="text-xs text-brand-600 hover:underline">Manage →</Link>
-          </div>
-          <table className="table-clean">
-            <thead>
-              <tr><th>Client</th><th>KYC</th><th>Credit</th></tr>
-            </thead>
-            <tbody>
-              {clientsList.filter((c) => c.kycStatus !== 'verified').slice(0, 6).map((c) => (
-                <tr key={c._id}>
-                  <td className="font-medium">{c.clientName}</td>
-                  <td><span className={statusBadge(c.kycStatus)}>{c.kycStatus}</span></td>
-                  <td><span className={statusBadge(c.creditStatus)}>{c.creditStatus}</span></td>
-                </tr>
-              ))}
-              {pendingKyc === 0 && (
-                <tr><td colSpan="3" className="p-6 text-center text-sm text-slate-400">All KYC verified ✓</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
         {/* Recent payments */}
         <div className="card">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -161,7 +160,7 @@ export default function L2Dashboard() {
               <tr><th>Client</th><th>Invoice</th><th>Status</th></tr>
             </thead>
             <tbody>
-              {paymentList.slice(0, 6).map((p) => (
+              {allPaymentRecords.slice(0, 6).map((p) => (
                 <tr key={p._id}>
                   <td className="font-medium">{p.client?.clientName}</td>
                   <td className="text-slate-500">{p.invoice?.invoiceNumber || '—'}</td>
@@ -174,7 +173,7 @@ export default function L2Dashboard() {
                   </td>
                 </tr>
               ))}
-              {paymentList.length === 0 && (
+              {allPaymentRecords.length === 0 && (
                 <tr><td colSpan="3" className="p-6 text-center text-sm text-slate-400">No records yet</td></tr>
               )}
             </tbody>

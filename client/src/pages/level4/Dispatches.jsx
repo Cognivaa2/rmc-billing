@@ -15,31 +15,28 @@ function StatusPipeline({ current }) {
     batchsheet: 'Batchsheet',
     invoiced: 'Invoiced',
   };
-  // Map actual status to step index
   const stepMap = { dispatched: 0, sale_authorized: 1, batchsheet: 2, invoiced: 3 };
   const idx = stepMap[current] ?? -1;
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center justify-between gap-1 w-full max-w-md overflow-x-auto pb-1 no-scrollbar">
       {STATUS_STEPS.map((s, i) => (
-        <div key={s} className="flex items-center gap-1">
+        <div key={s} className="flex items-center gap-1 flex-shrink-0">
           <div
-            className={`h-2 w-2 rounded-full ${
-              i < idx ? 'bg-emerald-500' : i === idx ? 'bg-brand-600' : 'bg-slate-200'
-            }`}
+            className={`h-2 w-2 rounded-full flex-shrink-0 ${i < idx ? 'bg-emerald-500' : i === idx ? 'bg-brand-600' : 'bg-slate-200'
+              }`}
           />
           <span
-            className={`text-xs ${
-              i === idx
-                ? 'font-semibold text-brand-700'
-                : i < idx
-                ? 'text-emerald-500'
-                : 'text-slate-300'
-            }`}
+            className={`text-[10px] sm:text-xs whitespace-nowrap ${i === idx
+              ? 'font-bold text-brand-700'
+              : i < idx
+                ? 'text-emerald-600 font-medium'
+                : 'text-slate-400'
+              }`}
           >
             {labels[s]}
           </span>
           {i < STATUS_STEPS.length - 1 && (
-            <div className={`mx-1 h-px w-4 ${i < idx ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+            <div className={`mx-0.5 sm:mx-1 h-px w-2 sm:w-4 flex-shrink-0 ${i < idx ? 'bg-emerald-400' : 'bg-slate-200'}`} />
           )}
         </div>
       ))}
@@ -68,7 +65,7 @@ function BatchsheetModal({ dispatch, existingBatchsheet, onClose, onSaved }) {
       mix: existingBatchsheet?.mixDesignData || {}
     }
   });
-  
+
   const { fields, append, remove } = useFieldArray({ control, name: 'batches' });
 
   // Auto-fill from grade mix design if new
@@ -86,8 +83,8 @@ function BatchsheetModal({ dispatch, existingBatchsheet, onClose, onSaved }) {
   const saveMutation = useMutation({
     mutationFn: (d) => {
       if (existingBatchsheet) {
-        return batchsheets.update(existingBatchsheet._id, { 
-          mixDesignData: { ...d.mix, batches: d.batches } 
+        return batchsheets.update(existingBatchsheet._id, {
+          mixDesignData: { ...d.mix, batches: d.batches }
         });
       } else {
         return batchsheets.create({
@@ -105,59 +102,59 @@ function BatchsheetModal({ dispatch, existingBatchsheet, onClose, onSaved }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col my-8">
-        <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center flex-shrink-0">
-          <h2 className="text-lg font-semibold text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col my-auto max-h-[95vh]">
+        <div className="bg-brand-700 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center flex-shrink-0">
+          <h2 className="text-sm sm:text-lg font-bold text-white truncate">
             {existingBatchsheet ? 'Edit Batchsheet' : 'Fill Batchsheet'} — {dispatch.dispatchNumber}
           </h2>
-          <button onClick={onClose} className="text-white hover:text-indigo-200">✕</button>
+          <button onClick={onClose} className="text-white hover:text-slate-200 p-1">✕</button>
         </div>
 
-        <form className="p-6 overflow-y-auto space-y-6" onSubmit={handleSubmit(saveMutation.mutate)}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <form className="p-3 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6" onSubmit={handleSubmit(saveMutation.mutate)}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
             {META_FIELDS.slice(0, 4).map(f => (
               <div key={f}>
-                <label className="label uppercase text-[10px] text-slate-400">{f.replace(/([A-Z])/g, ' $1')}</label>
-                <input className="input py-1 bg-white" {...register(`mix.${f}`)} />
+                <label className="label uppercase text-[9px] sm:text-[10px] text-slate-400 font-bold tracking-wider">{f.replace(/([A-Z])/g, ' $1')}</label>
+                <input className="input py-1.5 sm:py-2 text-xs sm:text-sm bg-white" {...register(`mix.${f}`)} />
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
             {STANDARD_FIELDS.map((f) => (
               <div key={f} className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase">Target {f}</label>
-                <input className="input py-1 text-sm bg-white" {...register(`mix.target_${f}`)} />
+                <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Target {f}</label>
+                <input className="input py-1 sm:py-1.5 text-xs bg-white text-right" {...register(`mix.target_${f}`)} />
               </div>
             ))}
           </div>
 
-          <div className="border rounded-xl overflow-hidden">
+          <div className="border rounded-xl overflow-hidden shadow-sm">
             <div className="bg-slate-50 p-3 border-b flex justify-between items-center">
-              <span className="text-xs font-bold uppercase text-slate-500">Mixer Cycles</span>
-              <button type="button" className="btn-primary text-[10px] py-1 px-3" onClick={() => append({})}>+ Add Cycle</button>
+              <span className="text-[10px] sm:text-xs font-black uppercase text-slate-500 tracking-widest">Mixer Cycles</span>
+              <button type="button" className="btn-primary text-[9px] sm:text-[10px] py-1 px-3" onClick={() => append({})}>+ Add Cycle</button>
             </div>
-            <div className="overflow-x-auto max-h-[300px]">
+            <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="sticky top-0 bg-white shadow-sm z-10">
-                  <tr className="bg-slate-50 border-b text-[10px] font-bold text-slate-400">
-                    <th className="p-2 border-r w-10">#</th>
-                    {STANDARD_FIELDS.map(f => <th key={f} className="p-2 border-r min-w-[80px]">{f.toUpperCase()}</th>)}
-                    <th className="p-2"></th>
+                  <tr className="bg-slate-50 border-b text-[9px] sm:text-[10px] font-black text-slate-400">
+                    <th className="p-2 border-r w-8">#</th>
+                    {STANDARD_FIELDS.map(f => <th key={f} className="p-2 border-r min-w-[60px] sm:min-w-[80px]">{f.toUpperCase()}</th>)}
+                    <th className="p-2 w-10 text-center">X</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fields.map((field, index) => (
-                    <tr key={field.id} className="border-b hover:bg-slate-50">
-                      <td className="p-2 text-center text-xs text-slate-400 border-r">{index + 1}</td>
+                    <tr key={field.id} className="border-b hover:bg-slate-50 transition-colors">
+                      <td className="p-2 text-center text-[10px] font-bold text-slate-400 border-r">{index + 1}</td>
                       {STANDARD_FIELDS.map(f => (
-                        <td key={f} className="p-1 border-r">
-                          <input className="w-full border-none bg-transparent text-sm py-1 px-1 text-right" {...register(`batches.${index}.${f}`)} />
+                        <td key={f} className="p-0 border-r">
+                          <input className="w-full border-none bg-transparent text-xs sm:text-sm py-2 px-1 text-right focus:bg-white focus:ring-1 focus:ring-brand-500 transition-all" {...register(`batches.${index}.${f}`)} />
                         </td>
                       ))}
                       <td className="p-2 text-center">
-                        <button type="button" className="text-rose-400 hover:text-rose-600" onClick={() => remove(index)}>✕</button>
+                        <button type="button" className="text-rose-400 hover:text-rose-600 transition-colors p-1" onClick={() => remove(index)}>✕</button>
                       </td>
                     </tr>
                   ))}
@@ -166,9 +163,9 @@ function BatchsheetModal({ dispatch, existingBatchsheet, onClose, onSaved }) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-            <button type="submit" className="btn-primary px-8" disabled={saveMutation.isPending}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2 sm:pt-4">
+            <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto text-xs sm:text-sm py-2">Cancel</button>
+            <button type="submit" className="btn-primary px-6 sm:px-8 w-full sm:w-auto text-xs sm:text-sm py-2 shadow-lg shadow-brand-200" disabled={saveMutation.isPending}>
               {saveMutation.isPending ? 'Saving...' : 'Save Batchsheet'}
             </button>
           </div>
@@ -203,13 +200,13 @@ function InvoiceModal({ dispatch, onClose, onGenerated }) {
         <div className="text-4xl mb-3">🧾</div>
         <h2 className="text-lg font-bold text-slate-800 mb-1">Generate Invoice</h2>
         <p className="text-sm text-slate-500 mb-6">Dispatch {dispatch.dispatchNumber} for {dispatch.client?.clientName}</p>
-        
+
         <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left border border-slate-100">
           <label className="flex items-center gap-3 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={showRate} 
-              onChange={e => setShowRate(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={showRate}
+              onChange={e => setShowRate(e.target.checked)}
               className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
             />
             <span className="text-sm font-medium text-slate-700">Show negotiated rate on invoice</span>
@@ -221,8 +218,8 @@ function InvoiceModal({ dispatch, onClose, onGenerated }) {
 
         <div className="grid grid-cols-2 gap-3">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button 
-            onClick={() => generate.mutate()} 
+          <button
+            onClick={() => generate.mutate()}
             className="btn-primary bg-emerald-600 hover:bg-emerald-700"
             disabled={generate.isPending}
           >
@@ -288,11 +285,10 @@ export default function L4Dispatches() {
           <button
             key={f.key}
             onClick={() => setStatusFilter(f.key)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-              statusFilter === f.key
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${statusFilter === f.key
+              ? 'bg-brand-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
           >
             {f.label}
           </button>
@@ -315,64 +311,88 @@ export default function L4Dispatches() {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {isLoading && (
-          <div className="card card-body text-center text-sm text-slate-400">Loading…</div>
+          <div className="card card-body text-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-3"></div>
+            <span className="text-sm text-slate-500 font-medium tracking-tight">Syncing dispatches...</span>
+          </div>
         )}
 
         {data.map((d) => (
-          <div key={d._id} className="card card-body">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              {/* Left: dispatch info */}
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="font-semibold text-slate-800">{d.dispatchNumber}</div>
-                  <StatusBadge status={d.status} />
+          <div key={d._id} className="card card-body border-none shadow-xl shadow-slate-200/50 hover:shadow-slate-200/80 transition-shadow duration-300">
+            <div className="flex flex-col gap-4">
+              {/* Header Info */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-slate-900 tracking-tighter">{d.dispatchNumber}</span>
+                    <StatusBadge status={d.status} />
+                  </div>
+                  <div className="text-[11px] sm:text-xs font-bold text-brand-700 uppercase tracking-tighter">
+                    {d.client?.clientName}
+                  </div>
                 </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {d.client?.clientName}
-                  {d.grade?.gradeCode && <> · <span className="font-medium text-slate-700">{d.grade.gradeCode}</span></>}
-                  {' '}· {d.quantity} m³
-                  {' '}· <span className="font-mono">{d.vehicleNumber}</span>
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {d.salesOrder?.soNumber ? `SO: ${d.salesOrder.soNumber}` : `Order: ${d.order?.orderNumber || '—'}`} · {fmtDateTime(d.dispatchDateTime)}
-                </div>
-                <div className="mt-2">
-                  <StatusPipeline current={d.status} />
+                <div className="text-[10px] sm:text-xs text-slate-400 font-medium text-left sm:text-right">
+                  {d.salesOrder?.soNumber ? `SO: ${d.salesOrder.soNumber}` : `Order: ${d.order?.orderNumber || '—'}`}
+                  <br />
+                  {fmtDateTime(d.dispatchDateTime)}
                 </div>
               </div>
 
-              {/* Right: action buttons */}
-              <div className="flex flex-shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+              {/* Status Pipeline - Scrollable on mobile */}
+              <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+                <StatusPipeline current={d.status} />
+              </div>
 
+              {/* Detailed Specs Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-2 border-y border-slate-50">
+                <div>
+                  <div className="text-[9px] uppercase font-black text-slate-400 tracking-tight">Grade</div>
+                  <div className="text-xs font-bold text-slate-700">{d.grade?.gradeCode || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] uppercase font-black text-slate-400 tracking-tight">Quantity</div>
+                  <div className="text-xs font-bold text-slate-700">{d.quantity} m³</div>
+                </div>
+                <div>
+                  <div className="text-[9px] uppercase font-black text-slate-400 tracking-tight">Vehicle</div>
+                  <div className="text-xs font-mono font-bold text-slate-700">{d.vehicleNumber}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] uppercase font-black text-slate-400 tracking-tight">Wait Time</div>
+                  <div className="text-xs font-bold text-slate-700">{d.waitTime || 0} min</div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center gap-2 pt-2">
                 {/* STEP 1 — Dispatched: waiting for L2 sale auth */}
                 {d.status === 'dispatched' && (
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 border border-amber-200 flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                  <div className="flex flex-row items-center justify-between sm:justify-end gap-2 bg-amber-50/50 px-3 py-2 rounded-xl border border-amber-100 w-full sm:w-auto">
+                    <span className="text-[10px] sm:text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>
                       Awaiting L2 Sale Auth
-                    </div>
-                    <p className="text-[10px] text-slate-400">Level 2 must authorize sale before batchsheet &amp; invoice</p>
+                    </span>
                   </div>
                 )}
 
                 {/* STEP 2 — Sale authorized */}
                 {d.status === 'sale_authorized' && (
-                  <div className="flex items-center gap-2">
+                  <>
                     <button
                       onClick={() => navigate('/l4/batchsheets', { state: { dispatchId: d._id } })}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition shadow-sm"
+                      className="btn-primary bg-indigo-600 hover:bg-indigo-700 text-[11px] py-2.5 px-4 shadow-lg shadow-indigo-100"
                     >
                       📋 Fill Batchsheet
                     </button>
                     <button
                       onClick={() => navigate('/l4/invoices', { state: { dispatchId: d._id } })}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition shadow-sm"
+                      className="btn-secondary border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] py-2.5 px-4"
                     >
-                      🧾 Generate Invoice / Challan
+                      🧾 Generate Invoice
                     </button>
-                  </div>
+                  </>
                 )}
 
                 {/* STEP 3 — Batchsheet Done: can do Invoice */}
@@ -380,15 +400,15 @@ export default function L4Dispatches() {
                   <>
                     <button
                       onClick={() => navigate('/l4/batchsheets', { state: { dispatchId: d._id } })}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                      className="btn-secondary border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-[11px] py-2.5 px-4"
                     >
                       📋 Edit Batchsheet
                     </button>
                     <button
                       onClick={() => navigate('/l4/invoices', { state: { dispatchId: d._id } })}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition shadow-sm"
+                      className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-[11px] py-2.5 px-4 shadow-lg shadow-emerald-100"
                     >
-                      🧾 Generate Invoice / Challan
+                      🧾 Generate Invoice
                     </button>
                   </>
                 )}
@@ -397,7 +417,7 @@ export default function L4Dispatches() {
                 {d.status === 'invoiced' && (
                   <Link
                     to="/l4/invoices"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                    className="btn-secondary border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-[11px] py-2.5 px-4 text-center"
                   >
                     View Invoice
                   </Link>

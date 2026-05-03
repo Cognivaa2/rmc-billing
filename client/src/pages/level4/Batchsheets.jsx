@@ -238,13 +238,6 @@ export default function L4Batchsheets() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-slate-800 text-lg">3 — Mixer Cycles</h2>
-                <button
-                  type="button"
-                  className="btn-primary text-sm px-4 py-2"
-                  onClick={() => append({})}
-                >
-                  + Add Cycle
-                </button>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
@@ -252,14 +245,6 @@ export default function L4Batchsheets() {
                   <div key={field.id} className="card border-slate-200 overflow-hidden">
                     <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cycle #{index + 1}</span>
-                      <button
-                        type="button"
-                        className="text-slate-400 hover:text-rose-500 transition-colors"
-                        onClick={() => remove(index)}
-                        title="Remove Cycle"
-                      >
-                        <span className="text-xl font-bold">×</span>
-                      </button>
                     </div>
                     <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                       {MATERIALS.map(({ key, label }) => (
@@ -281,7 +266,7 @@ export default function L4Batchsheets() {
                 {fields.length === 0 && (
                   <div className="card card-body py-10 text-center border-dashed border-2 border-slate-200 bg-slate-50">
                     <div className="text-4xl mb-2 grayscale opacity-20">🔄</div>
-                    <p className="text-sm text-slate-400">No mixer cycles added. Click "+ Add Cycle" to begin.</p>
+                    <p className="text-sm text-slate-400">No mixer cycles added.</p>
                   </div>
                 )}
               </div>
