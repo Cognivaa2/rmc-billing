@@ -39,10 +39,10 @@ app.use(cors({
     if (!origin) return cb(null, true);
 
     const allowedOrigins = env.clientOrigin.split(',').map(o => o.trim().replace(/\/$/, ''));
-    
+
     if (
-      env.clientOrigin === '*' || 
-      allowedOrigins.includes(origin.replace(/\/$/, '')) || 
+      env.clientOrigin === '*' ||
+      allowedOrigins.includes(origin.replace(/\/$/, '')) ||
       env.nodeEnv !== 'production'
     ) {
       cb(null, true);
