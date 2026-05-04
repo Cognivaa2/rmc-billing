@@ -3,8 +3,8 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../store/auth.js';
 
 const socketUrl =
-  (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '') ||
-  'http://localhost:5000';
+  (import.meta.env.VITE_API_URL || 'https://rmc-billing.onrender.com/api/v1').replace(/\/api\/v1\/?$/, '') ||
+  'https://rmc-billing.onrender.com';
 
 export function useSocket(onEvent) {
   const user = useAuth((s) => s.user);
