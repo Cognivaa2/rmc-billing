@@ -311,10 +311,15 @@ export default function L4Batchsheets() {
                         Edit
                       </button>
                       <button
-                        className="text-xs font-medium text-slate-500 hover:text-slate-700 bg-slate-100 px-3 py-1 rounded transition-colors text-center"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
                         onClick={() => viewPdf(b._id)}
+                        title="Download PDF"
                       >
-                        PDF
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
                       </button>
                     </div>
                   </div>

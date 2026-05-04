@@ -246,7 +246,7 @@ export default function L4SalesOrders() {
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
                       <div className="bg-slate-100 text-slate-700 px-2 py-1 rounded font-bold">{so.grade?.gradeCode}</div>
                       <div className="text-slate-400 font-medium">
-                        Remaining: <span className={`font-bold ${isFull ? 'text-rose-500' : 'text-slate-800'}`}>{so.remainingQuantity} m³</span>
+                        Remaining: <span className={`font-bold ${isFull ? 'text-emerald-500' : 'text-slate-800'}`}>{so.remainingQuantity} m³</span>
                       </div>
                       <div className="text-slate-400 font-medium">
                         Total: <span className="font-bold text-slate-800">{so.totalQuantity} m³</span>
@@ -262,7 +262,7 @@ export default function L4SalesOrders() {
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                       <div 
-                        className={`h-full rounded-full transition-all duration-1000 ease-out ${pct >= 100 ? 'bg-rose-500' : 'bg-brand-600'}`}
+                        className={`h-full rounded-full transition-all duration-1000 ease-out ${pct >= 100 ? 'bg-emerald-500' : 'bg-brand-600'}`}
                         style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
