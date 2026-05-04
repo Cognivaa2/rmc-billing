@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { orders } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime, fmtMoney } from '../../utils/format.js';
@@ -45,21 +45,20 @@ function PipelineBar({ status }) {
     <div className="relative mt-2">
       {/* Background track */}
       <div className="absolute top-2 left-0 h-1 w-full rounded-full bg-slate-100" />
-      
+
       <div className="relative flex justify-between">
         {PIPELINE_STEPS.map((s, i) => {
           const isCompleted = i < idx || (idx === PIPELINE_STEPS.length - 1 && i === idx);
           const isActive = i === idx && idx !== PIPELINE_STEPS.length - 1;
-          
+
           return (
             <div key={s} className="flex flex-col items-center group">
               {/* Connector line for completed steps */}
               {i > 0 && (
-                <div 
-                  className={`absolute top-2 h-1 transition-all duration-500 ${
-                    i <= idx ? 'bg-emerald-500' : 'bg-transparent'
-                  }`}
-                  style={{ 
+                <div
+                  className={`absolute top-2 h-1 transition-all duration-500 ${i <= idx ? 'bg-emerald-500' : 'bg-transparent'
+                    }`}
+                  style={{
                     left: `${((i - 1) / (PIPELINE_STEPS.length - 1)) * 100 + 2}%`,
                     width: `${(1 / (PIPELINE_STEPS.length - 1)) * 100 - 4}%`
                   }}
@@ -68,13 +67,12 @@ function PipelineBar({ status }) {
 
               {/* Step circle */}
               <div
-                className={`relative z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-300 ${
-                  isCompleted
-                    ? 'border-emerald-500 bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                    : isActive
+                className={`relative z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-300 ${isCompleted
+                  ? 'border-emerald-500 bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]'
+                  : isActive
                     ? 'border-brand-600 bg-white shadow-[0_0_8px_rgba(37,99,235,0.2)]'
                     : 'border-slate-200 bg-white'
-                }`}
+                  }`}
               >
                 {isCompleted ? (
                   <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
@@ -86,10 +84,9 @@ function PipelineBar({ status }) {
               </div>
 
               {/* Label */}
-              <span 
-                className={`mt-1.5 text-[10px] font-bold uppercase tracking-tight transition-colors ${
-                  isCompleted ? 'text-emerald-600' : isActive ? 'text-brand-600' : 'text-slate-400'
-                }`}
+              <span
+                className={`mt-1.5 text-[10px] font-bold uppercase tracking-tight transition-colors ${isCompleted ? 'text-emerald-600' : isActive ? 'text-brand-600' : 'text-slate-400'
+                  }`}
               >
                 {s === 'PENDING' ? 'Pending' : s === 'APPROVED' ? 'Approved' : s === 'DISPATCHED' ? 'Dispatch' : 'Closed'}
               </span>
@@ -102,15 +99,18 @@ function PipelineBar({ status }) {
 }
 
 export default function L3MyOrders() {
+  const location = useLocation();
   const [page, setPage] = useState(1);
+  const [activeFilter, setActiveFilter] = useState(location.state?.filter || 'ALL');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', 'mine', page],
+    queryKey: ['orders', 'mine', page, activeFilter],
     queryFn: () =>
       orders.listPaginated({
         mine: 'true',
         page,
         limit: 10,
+        status: activeFilter === 'ALL' ? undefined : activeFilter,
       }),
     keepPreviousData: true,
   });
@@ -130,6 +130,25 @@ export default function L3MyOrders() {
         }
       />
 
+      {/* Filter Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => {
+              setActiveFilter(f.key);
+              setPage(1);
+            }}
+            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all ${activeFilter === f.key
+              ? 'bg-brand-600 text-white shadow-md'
+              : 'bg-white text-slate-500 hover:bg-slate-50'
+              }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Orders list */}
       <div className="space-y-3 pt-2">
         {isLoading && (
@@ -139,16 +158,15 @@ export default function L3MyOrders() {
         {ordersList.map((o) => {
           const nStatus = getNormalizedStatus(o.status);
           const isRejected = o.status === 'REJECTED';
-          
+
           return (
             <div key={o._id} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
               {/* Left Color Strip */}
-              <div className={`absolute inset-y-0 left-0 w-1 ${
-                isRejected ? 'bg-red-500' : 
-                nStatus === 'CLOSED' ? 'bg-emerald-500' : 
-                nStatus === 'DISPATCHED' ? 'bg-indigo-500' : 
-                nStatus === 'APPROVED' ? 'bg-blue-500' : 'bg-amber-500'
-              }`} />
+              <div className={`absolute inset-y-0 left-0 w-1 ${isRejected ? 'bg-red-500' :
+                nStatus === 'CLOSED' ? 'bg-emerald-500' :
+                  nStatus === 'DISPATCHED' ? 'bg-indigo-500' :
+                    nStatus === 'APPROVED' ? 'bg-blue-500' : 'bg-amber-500'
+                }`} />
 
               <div className="p-4 sm:p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -160,7 +178,7 @@ export default function L3MyOrders() {
                         {FILTERS.find((f) => f.key === nStatus)?.label || o.status}
                       </span>
                     </div>
-                    
+
                     <div className="mt-2">
                       <p className="font-bold text-slate-800 text-base">{o.client?.clientName}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-y-1 gap-x-4 text-sm text-slate-500">
@@ -202,7 +220,7 @@ export default function L3MyOrders() {
                       <div className="text-[10px] text-slate-400 font-medium">Created on</div>
                       <div className="text-xs font-semibold text-slate-600">{fmtDateTime(o.createdAt)}</div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       {o.status === 'PENDING' && (
                         <Link
@@ -251,8 +269,8 @@ export default function L3MyOrders() {
             <div className="text-4xl mb-3">📋</div>
             <div className="text-sm font-medium">
               {activeFilter === 'ALL'
-                ? 'No orders yet.'
-                : `No ${FILTERS.find((f) => f.key === activeFilter)?.label} orders.`}
+                ? 'No orders found.'
+                : `No ${FILTERS.find((f) => f.key === activeFilter)?.label} orders found.`}
             </div>
             {activeFilter === 'ALL' && (
               <Link to="/l3/orders/new" className="mt-4 inline-block btn-primary text-xs">

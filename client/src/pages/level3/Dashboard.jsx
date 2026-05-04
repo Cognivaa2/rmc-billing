@@ -86,7 +86,7 @@ export default function L3Dashboard() {
             <div className="p-6 text-center text-sm text-slate-400">Loading…</div>
           )}
           {!isLoading && minePaginated.length === 0 && (
-            <div className="p-8 text-center text-sm text-slate-400">No orders yet.</div>
+            <div className="p-8 text-center text-sm text-slate-400">No orders found.</div>
           )}
           {minePaginated.map((o) => (
             <div key={o._id} className="flex items-center justify-between px-4 py-3 gap-3">
@@ -128,7 +128,7 @@ export default function L3Dashboard() {
               </tr>
             ))}
             {minePaginated.length === 0 && !isLoading && (
-              <tr><td colSpan="5" className="p-6 text-center text-sm text-slate-400">No orders yet.</td></tr>
+              <tr><td colSpan="5" className="p-6 text-center text-sm text-slate-400">No orders found.</td></tr>
             )}
             {isLoading && (
               <tr><td colSpan="5" className="p-6 text-center text-sm text-slate-400">Loading…</td></tr>
