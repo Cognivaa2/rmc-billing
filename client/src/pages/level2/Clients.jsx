@@ -20,14 +20,18 @@ export default function L2Clients() {
   });
   const clientList = data.clients || [];
 
-  const { register: regClient, handleSubmit: handleClient, reset: resetClient } = useForm();
+  const { register: regClient, handleSubmit: handleClient, reset: resetClient, formState: { errors: clientErrors } } = useForm();
   const { register: regSite, handleSubmit: handleSite, reset: resetSite } = useForm();
 
   const createClient = useMutation({
     mutationFn: (d) =>
       clients.create({
         ...d,
-        taxInformation: { gstin: d.gstin || undefined, pan: d.pan || undefined },
+        contactNumber: d.contactNumber?.trim(),
+        taxInformation: {
+          gstin: d.gstin ? d.gstin.trim().toUpperCase() : undefined,
+          pan: d.pan ? d.pan.trim().toUpperCase() : undefined,
+        },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clients'] });
@@ -64,28 +68,90 @@ export default function L2Clients() {
         >
           <div>
             <label className="label">Client Name *</label>
-            <input className="input" required {...regClient('clientName')} />
+            <input
+              className={`input ${clientErrors.clientName ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+              {...regClient('clientName', { required: 'Client name is required' })}
+            />
+            {clientErrors.clientName && (
+              <p className="mt-1 text-xs text-rose-600 font-medium">{clientErrors.clientName.message}</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="label">Office Address *</label>
-            <input className="input" required {...regClient('officeAddress')} />
+            <input
+              className={`input ${clientErrors.officeAddress ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+              {...regClient('officeAddress', { required: 'Office address is required' })}
+            />
+            {clientErrors.officeAddress && (
+              <p className="mt-1 text-xs text-rose-600 font-medium">{clientErrors.officeAddress.message}</p>
+            )}
           </div>
           <div>
             <label className="label">Contact Number *</label>
-            <input className="input" required {...regClient('contactNumber')} />
+            <input
+              className={`input ${clientErrors.contactNumber ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+              placeholder="e.g. 9876543210"
+              {...regClient('contactNumber', {
+                required: 'Contact number is required',
+                pattern: {
+                  value: /^\d{10}$/,
+                  message: 'Must be exactly 10 digits',
+                },
+              })}
+            />
+            {clientErrors.contactNumber && (
+              <p className="mt-1 text-xs text-rose-600 font-medium">{clientErrors.contactNumber.message}</p>
+            )}
           </div>
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" {...regClient('email')} />
+            <input
+              className={`input ${clientErrors.email ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+              type="email"
+              placeholder="e.g. client@example.com"
+              {...regClient('email')}
+            />
+            {clientErrors.email && (
+              <p className="mt-1 text-xs text-rose-600 font-medium">{clientErrors.email.message}</p>
+            )}
           </div>
           <div>
             <label className="label">GSTIN</label>
-            <input className="input" {...regClient('gstin')} />
+            <input
+              className={`input uppercase ${clientErrors.gstin ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+              placeholder="e.g. 22AAAAA0000A1Z5"
+              {...regClient('gstin', {
+                pattern: {
+                  value: /^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}[1-9A-Za-z]{1}Z[0-9A-Za-z]{1}$/,
+                  message: 'Format must be: 22AAAAA0000A1Z5',
+                },
+              })}
+            />
+            {clientErrors.gstin && (
+              <p className="mt-1 text-xs text-rose-600 font-medium">{clientErrors.gstin.message}</p>
+            )}
           </div>
           <div>
             <label className="label">PAN</label>
-            <input className="input" {...regClient('pan')} />
+            <input
+              className={`input uppercase ${clientErrors.pan ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+              placeholder="e.g. ABCDE1234F"
+              {...regClient('pan', {
+                pattern: {
+                  value: /^[A-Za-z]{5}\d{4}[A-Za-z]$/,
+                  message: 'Format must be: 5 letters, 4 digits, 1 letter',
+                },
+              })}
+            />
+            {clientErrors.pan && (
+              <p className="mt-1 text-xs text-rose-600 font-medium">{clientErrors.pan.message}</p>
+            )}
           </div>
+          {createClient.error && (
+            <div className="md:col-span-3 rounded-lg bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">
+              {createClient.error?.response?.data?.error || 'Failed to save client'}
+            </div>
+          )}
           <div className="md:col-span-3 flex justify-end">
             <button className="btn-primary" disabled={createClient.isPending}>
               {createClient.isPending ? 'Saving…' : 'Save Client'}

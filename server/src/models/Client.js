@@ -13,11 +13,43 @@ const clientSchema = new mongoose.Schema(
   {
     clientName: { type: String, required: true, trim: true, index: true },
     officeAddress: { type: String, required: true },
-    contactNumber: { type: String, required: true },
+    contactNumber: {
+      type: String,
+      required: true,
+      trim: true,
+      validate: {
+        validator: function (v) {
+          return /^\d{10}$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid 10-digit contact number!`,
+      },
+    },
     email: String,
     taxInformation: {
-      gstin: String,
-      pan: String,
+      gstin: {
+        type: String,
+        uppercase: true,
+        trim: true,
+        validate: {
+          validator: function (v) {
+            if (!v) return true;
+            return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(v);
+          },
+          message: (props) => `${props.value} is not a valid GST number!`,
+        },
+      },
+      pan: {
+        type: String,
+        uppercase: true,
+        trim: true,
+        validate: {
+          validator: function (v) {
+            if (!v) return true;
+            return /^[A-Z]{5}\d{4}[A-Z]$/.test(v);
+          },
+          message: (props) => `${props.value} is not a valid PAN number!`,
+        },
+      },
       otherTaxId: String,
     },
     kycStatus: {

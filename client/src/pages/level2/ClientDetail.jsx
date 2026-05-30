@@ -40,7 +40,7 @@ export default function L2ClientDetail() {
     defaultValues: { paymentReceived: true },
   });
   const { register: regSite, handleSubmit: handleSite, reset: resetSite } = useForm();
-  const { register: regProfile, handleSubmit: handleProfile, reset: resetProfile } = useForm();
+  const { register: regProfile, handleSubmit: handleProfile, reset: resetProfile, formState: { errors: profileErrors } } = useForm();
 
   const updateKyc = useMutation({
     mutationFn: (d) =>
@@ -61,11 +61,11 @@ export default function L2ClientDetail() {
       clients.update(id, {
         clientName: d.clientName,
         officeAddress: d.officeAddress,
-        contactNumber: d.contactNumber,
+        contactNumber: d.contactNumber?.trim(),
         email: d.email,
         taxInformation: {
-          gstin: d.gstin,
-          pan: d.pan,
+          gstin: d.gstin ? d.gstin.trim().toUpperCase() : undefined,
+          pan: d.pan ? d.pan.trim().toUpperCase() : undefined,
         },
       }),
     onSuccess: () => {
@@ -173,28 +173,90 @@ export default function L2ClientDetail() {
           <form className="grid grid-cols-1 gap-3 md:grid-cols-3" onSubmit={handleProfile((d) => updateProfile.mutate(d))}>
             <div>
               <label className="label">Client Name *</label>
-              <input className="input" required {...regProfile('clientName')} />
+              <input
+                className={`input ${profileErrors.clientName ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+                {...regProfile('clientName', { required: 'Client name is required' })}
+              />
+              {profileErrors.clientName && (
+                <p className="mt-1 text-xs text-rose-600 font-medium">{profileErrors.clientName.message}</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <label className="label">Office Address *</label>
-              <input className="input" required {...regProfile('officeAddress')} />
+              <input
+                className={`input ${profileErrors.officeAddress ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+                {...regProfile('officeAddress', { required: 'Office address is required' })}
+              />
+              {profileErrors.officeAddress && (
+                <p className="mt-1 text-xs text-rose-600 font-medium">{profileErrors.officeAddress.message}</p>
+              )}
             </div>
             <div>
               <label className="label">Contact Number *</label>
-              <input className="input" required {...regProfile('contactNumber')} />
+              <input
+                className={`input ${profileErrors.contactNumber ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+                placeholder="e.g. 9876543210"
+                {...regProfile('contactNumber', {
+                  required: 'Contact number is required',
+                  pattern: {
+                    value: /^\d{10}$/,
+                    message: 'Must be exactly 10 digits',
+                  },
+                })}
+              />
+              {profileErrors.contactNumber && (
+                <p className="mt-1 text-xs text-rose-600 font-medium">{profileErrors.contactNumber.message}</p>
+              )}
             </div>
             <div>
               <label className="label">Email</label>
-              <input className="input" type="email" {...regProfile('email')} />
+              <input
+                className={`input ${profileErrors.email ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+                type="email"
+                placeholder="e.g. client@example.com"
+                {...regProfile('email')}
+              />
+              {profileErrors.email && (
+                <p className="mt-1 text-xs text-rose-600 font-medium">{profileErrors.email.message}</p>
+              )}
             </div>
             <div>
               <label className="label">GSTIN</label>
-              <input className="input" {...regProfile('gstin')} />
+              <input
+                className={`input uppercase ${profileErrors.gstin ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+                placeholder="e.g. 22AAAAA0000A1Z5"
+                {...regProfile('gstin', {
+                  pattern: {
+                    value: /^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}[1-9A-Za-z]{1}Z[0-9A-Za-z]{1}$/,
+                    message: 'Format must be: 22AAAAA0000A1Z5',
+                  },
+                })}
+              />
+              {profileErrors.gstin && (
+                <p className="mt-1 text-xs text-rose-600 font-medium">{profileErrors.gstin.message}</p>
+              )}
             </div>
             <div>
               <label className="label">PAN</label>
-              <input className="input" {...regProfile('pan')} />
+              <input
+                className={`input uppercase ${profileErrors.pan ? 'border-rose-300 focus:ring-rose-500 focus:border-rose-500' : ''}`}
+                placeholder="e.g. ABCDE1234F"
+                {...regProfile('pan', {
+                  pattern: {
+                    value: /^[A-Za-z]{5}\d{4}[A-Za-z]$/,
+                    message: 'Format must be: 5 letters, 4 digits, 1 letter',
+                  },
+                })}
+              />
+              {profileErrors.pan && (
+                <p className="mt-1 text-xs text-rose-600 font-medium">{profileErrors.pan.message}</p>
+              )}
             </div>
+            {updateProfile.error && (
+              <div className="md:col-span-3 rounded-lg bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">
+                {updateProfile.error?.response?.data?.error || 'Failed to update client profile'}
+              </div>
+            )}
             <div className="md:col-span-3 flex justify-end gap-3">
               <button type="button" onClick={() => setIsEditingProfile(false)} className="btn-secondary">Cancel</button>
               <button className="btn-primary" disabled={updateProfile.isPending}>

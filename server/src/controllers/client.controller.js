@@ -5,12 +5,32 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { notifyLevels } from '../services/notification.service.js';
 
 export const createClientSchema = z.object({
-  clientName: z.string().min(2),
-  officeAddress: z.string().min(2),
-  contactNumber: z.string().min(5),
-  email: z.string().email().optional().or(z.literal('')),
+  clientName: z.string().min(2, 'Client name must be at least 2 characters'),
+  officeAddress: z.string().min(2, 'Office address must be at least 2 characters'),
+  contactNumber: z.string().regex(/^\d{10}$/, 'Contact number must be exactly 10 digits'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   taxInformation: z
-    .object({ gstin: z.string().optional(), pan: z.string().optional(), otherTaxId: z.string().optional() })
+    .object({
+      gstin: z
+        .string()
+        .trim()
+        .toUpperCase()
+        .refine((val) => !val || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(val), {
+          message: 'Invalid GSTIN format (e.g. 22AAAAA0000A1Z5)',
+        })
+        .optional()
+        .or(z.literal('')),
+      pan: z
+        .string()
+        .trim()
+        .toUpperCase()
+        .refine((val) => !val || /^[A-Z]{5}\d{4}[A-Z]$/.test(val), {
+          message: 'Invalid PAN format (5 letters, 4 digits, 1 letter)',
+        })
+        .optional()
+        .or(z.literal('')),
+      otherTaxId: z.string().optional(),
+    })
     .optional(),
 });
 
