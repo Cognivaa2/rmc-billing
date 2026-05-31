@@ -4,14 +4,6 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 
 const REPORTS = [
   {
-    id: 'sales-orders',
-    title: 'Sales Order Report',
-    description: 'Comprehensive overview of all sales orders including status, rates, and dispatch tracking.',
-    fields: ['Client Name', 'Grade', 'SO Status', 'Rate', 'Quantity', 'Level 4', 'Level 2', 'KYC', 'Credit', 'Dispatched', 'Remaining'],
-    dateable: false,
-    color: 'blue'
-  },
-  {
     id: 'clients',
     title: 'Client Database',
     description: 'Master list of all clients with contact details, tax information, and KYC status.',

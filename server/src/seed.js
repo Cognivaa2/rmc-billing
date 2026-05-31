@@ -5,7 +5,6 @@ import { User } from './models/User.js';
 import { Client } from './models/Client.js';
 import { Site } from './models/Site.js';
 import { ConcreteGrade } from './models/ConcreteGrade.js';
-import { BatchsheetTemplate } from './models/BatchsheetTemplate.js';
 import { logger } from './utils/logger.js';
 
 const DEFAULT_PASSWORD = 'ChangeMe@123';
@@ -92,28 +91,6 @@ async function run() {
     }
   }
 
-  const l4 = await User.findOne({ email: 'l4a@rmc.local' });
-  await BatchsheetTemplate.updateOne(
-    { templateName: 'Standard RMC Batchsheet' },
-    {
-      $setOnInsert: {
-        templateName: 'Standard RMC Batchsheet',
-        type: 'preset',
-        layoutJson: { sections: ['header', 'mix-design', 'quantities', 'signatures'] },
-        mixDesignFields: [
-          'cement_kg',
-          'water_l',
-          'fine_aggregate_kg',
-          'coarse_aggregate_10mm_kg',
-          'coarse_aggregate_20mm_kg',
-          'admixture_l',
-          'slump_mm',
-        ],
-        createdByLevel4: l4?._id,
-      },
-    },
-    { upsert: true },
-  );
 
   logger.info('Seed complete.');
   logger.info(`Default password for all seeded users: ${DEFAULT_PASSWORD}`);

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { invoices, payments, clients } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { fmtMoney, fmtDateTime } from '../../utils/format.js';
+import { fmtMoney, fmtDateTime, fmtMoneyShort } from '../../utils/format.js';
 
 export default function L2Invoices() {
   const nav = useNavigate();
@@ -16,7 +16,8 @@ export default function L2Invoices() {
 
   const { data: paymentsList = [], isLoading: isLoadingPayments } = useQuery({
     queryKey: ['payments', 'all'],
-    queryFn: () => payments.list(), // passing no pagination to get all
+    queryFn: () => payments.list({ limit: 10000 }), // shared cache with Payments page
+    staleTime: 30_000,
   });
 
   const { data: clientsList = [] } = useQuery({
@@ -72,19 +73,19 @@ export default function L2Invoices() {
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Total Billed
           </div>
-          <div className="mt-1 text-2xl font-bold text-slate-800">{fmtMoney(totalBilled)}</div>
+          <div className="mt-1 text-2xl font-bold text-slate-800">{fmtMoneyShort(totalBilled)}</div>
         </div>
         <div className="card card-body">
           <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
             Total Paid
           </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-700">{fmtMoney(totalPaid)}</div>
+          <div className="mt-1 text-2xl font-bold text-emerald-700">{fmtMoneyShort(totalPaid)}</div>
         </div>
         <div className="card card-body">
           <div className="text-xs font-semibold uppercase tracking-wide text-rose-500">
             Total Due
           </div>
-          <div className="mt-1 text-2xl font-bold text-rose-600">{fmtMoney(totalDue)}</div>
+          <div className="mt-1 text-2xl font-bold text-rose-600">{fmtMoneyShort(totalDue)}</div>
         </div>
       </div>
 

@@ -18,7 +18,7 @@ const notificationSchema = new mongoose.Schema(
     type: { type: String, enum: NOTIFICATION_TYPES, required: true },
     message: { type: String, required: true },
     relatedEntity: {
-      kind: { type: String, enum: ['Order', 'SalesOrder', 'DispatchForm', 'Invoice', 'Client'] },
+      kind: { type: String, enum: ['Order', 'DispatchForm', 'Invoice', 'Client'] },
       id: { type: mongoose.Schema.Types.ObjectId },
     },
     channels: { type: [String], enum: ['inapp', 'email', 'sms'], default: ['inapp'] },

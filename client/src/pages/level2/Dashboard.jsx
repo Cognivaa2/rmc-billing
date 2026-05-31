@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { orders, dispatches, salesOrders, clients, payments, invoices } from '../../api/endpoints.js';
+import { orders, dispatches, clients, payments, invoices } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { KpiCard } from '../../components/KpiCard.jsx';
-import { statusBadge, fmtDateTime, fmtMoney } from '../../utils/format.js';
+import { statusBadge, fmtDateTime, fmtMoney, fmtMoneyShort } from '../../utils/format.js';
 
 export default function L2Dashboard() {
   const { data: pending = [] } = useQuery({
@@ -15,9 +15,9 @@ export default function L2Dashboard() {
     queryKey: ['dispatches', 'awaiting'],
     queryFn: () => dispatches.list({ status: 'dispatched' }),
   });
-  const { data: closedSos = [] } = useQuery({
-    queryKey: ['sales-orders', 'closed'],
-    queryFn: () => salesOrders.list({ status: 'closed' }),
+  const { data: approvedOrders = [] } = useQuery({
+    queryKey: ['orders', 'APPROVED'],
+    queryFn: () => orders.list({ status: 'APPROVED' }),
   });
   const { data: clientsList = [] } = useQuery({
     queryKey: ['clients'],
@@ -77,20 +77,20 @@ export default function L2Dashboard() {
         />
         <KpiCard
           title="Total Received Payment"
-          value={fmtMoney(receivedPaymentSum)}
+          value={fmtMoneyShort(receivedPaymentSum)}
           hint={`${allPaymentRecords.filter(p => p.paymentReceived).length} records`}
           to="/l2/payments"
         />
         <KpiCard
-          title="Total Close Order"
-          value={closedSos.length}
-          hint="Fully closed sales orders"
-          to="/l2/sales-orders"
-          state={{ filter: 'closed' }}
+          title="Approved Orders"
+          value={approvedOrders.length}
+          hint="Awaiting L4 dispatch"
+          to="/l2/orders"
+          state={{ filter: 'APPROVED' }}
         />
         <KpiCard
           title="Not Received / Pending Payment"
-          value={fmtMoney(pendingPaymentSum)}
+          value={fmtMoneyShort(pendingPaymentSum)}
           hint={`${unpaidCount} unpaid records`}
           to="/l2/payments"
         />

@@ -3,7 +3,6 @@ import { authMiddleware, rbac } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   deleteDispatchData,
-  deleteBatchsheetData,
   deleteRangeSchema,
   getCompanySettings,
   updateCompanySettings,
@@ -18,7 +17,6 @@ router.get('/settings', getCompanySettings);
 // Only Level 1 can update company settings and delete data
 router.patch('/settings', rbac(1), validate(companySettingsSchema), updateCompanySettings);
 router.delete('/dispatch-data', rbac(1), validate(deleteRangeSchema), deleteDispatchData);
-router.delete('/batchsheet-data', rbac(1), validate(deleteRangeSchema), deleteBatchsheetData);
 
 export default router;
 

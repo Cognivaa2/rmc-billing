@@ -32,23 +32,28 @@ export const listPayments = asyncHandler(async (req, res) => {
     filter.client = { $in: clientIds };
   }
 
-  let query = Payment.find(filter)
-    .populate('client', 'clientName')
-    .populate('invoice', 'invoiceNumber amount')
-    .populate('order', 'orderNumber')
-    .populate('recordedByLevel2', 'name')
-    .sort({ createdAt: -1 });
-
-  const total = await Payment.countDocuments(filter);
   const limitNum = parseInt(limit, 10) || 10;
   const currentPage = parseInt(page, 10) || 1;
   const skip = (currentPage - 1) * limitNum;
 
-  query = query.skip(skip).limit(limitNum);
-  const totalPages = Math.ceil(total / limitNum);
+  // Skip expensive countDocuments for bulk fetches (e.g. limit=10000)
+  let total;
+  if (limitNum < 1000) {
+    total = await Payment.countDocuments(filter);
+  }
 
-  const payments = await query;
-  res.json({ payments, total, page: currentPage, totalPages });
+  const payments = await Payment.find(filter)
+    .populate('client', 'clientName')
+    .populate('invoice', 'invoiceNumber amount')
+    .populate('order', 'orderNumber')
+    .populate('recordedByLevel2', 'name')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limitNum)
+    .lean();
+
+  const totalPages = total != null ? Math.ceil(total / limitNum) : 1;
+  res.json({ payments, total: total ?? payments.length, page: currentPage, totalPages });
 });
 
 export const createPayment = asyncHandler(async (req, res) => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { salesOrders, dispatches } from '../../api/endpoints.js';
+import { orders, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
 
@@ -173,7 +173,7 @@ export default function L4SalesOrders() {
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['sales-orders', 'open'],
-    queryFn: () => salesOrders.list({ status: 'open' }),
+    queryFn: () => orders.list({ status: 'open' }),
   });
 
   const submitDispatch = useMutation({

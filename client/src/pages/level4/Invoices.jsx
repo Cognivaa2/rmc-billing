@@ -91,10 +91,10 @@ export default function L4Invoices() {
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                   <button className="btn-secondary text-xs px-3 py-1.5" onClick={() => generate(d, { showRate: false })}>
-                    Hide Rate
+                    Hide Amount
                   </button>
                   <button className="btn-primary text-xs px-3 py-1.5 bg-brand-600 hover:bg-brand-700" onClick={() => generate(d, { showRate: true })}>
-                    Show Rate
+                    Show Amount
                   </button>
                 </div>
               </div>

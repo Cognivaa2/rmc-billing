@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { salesOrders, dispatches } from '../../api/endpoints.js';
+import { orders, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtMoney, fmtDateTime } from '../../utils/format.js';
 
@@ -174,11 +174,11 @@ export default function L2SalesOrders() {
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['sales-orders', activeFilter],
-    queryFn: () => salesOrders.list(activeFilter === 'ALL' ? {} : { status: activeFilter }),
+    queryFn: () => orders.list(activeFilter === 'ALL' ? {} : { status: activeFilter }),
   });
 
   const closeSale = useMutation({
-    mutationFn: (id) => salesOrders.close(id),
+    mutationFn: (id) => orders.close(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sales-orders'] });
       setCloseTarget(null);
@@ -187,7 +187,7 @@ export default function L2SalesOrders() {
 
   const { data: allData = [] } = useQuery({
     queryKey: ['sales-orders', 'all-counts'],
-    queryFn: () => salesOrders.list(),
+    queryFn: () => orders.list(),
   });
 
   const openCount = allData.filter((s) => s.status === 'open').length;

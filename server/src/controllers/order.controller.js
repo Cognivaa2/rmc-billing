@@ -125,7 +125,6 @@ export const authorizeSale = asyncHandler(async (req, res) => {
   }
   const { dispatchIds } = req.body;
   const { DispatchForm } = await import('../models/DispatchForm.js');
-  const { SalesOrder } = await import('../models/SalesOrder.js');
 
   let updateResult;
 
@@ -137,14 +136,10 @@ export const authorizeSale = asyncHandler(async (req, res) => {
     );
     console.log(`[authorizeSale] Updated ${updateResult.modifiedCount} of ${dispatchIds.length} dispatches by ID`);
   } else {
-    // Fallback: update ALL pending dispatches linked to this order (via direct or SO link)
-    const sos = await SalesOrder.find({ sourceOrder: order._id }).select('_id').lean();
+    // Fallback: update ALL pending dispatches linked to this order
     const updateResult2 = await DispatchForm.updateMany(
       {
-        $or: [
-          { order: order._id },
-          { salesOrder: { $in: sos.map((s) => s._id) } }
-        ],
+        order: order._id,
         status: 'dispatched'
       },
       { $set: { status: 'sale_authorized' } }
@@ -153,13 +148,9 @@ export const authorizeSale = asyncHandler(async (req, res) => {
     updateResult = updateResult2;
   }
 
-  // Check remaining pending dispatches across all SOs of this order
-  const sos = await SalesOrder.find({ sourceOrder: order._id }).select('_id').lean();
+  // Check remaining pending dispatches across this order
   const remainingCount = await DispatchForm.countDocuments({
-    $or: [
-      { order: order._id },
-      { salesOrder: { $in: sos.map((s) => s._id) } }
-    ],
+    order: order._id,
     status: 'dispatched'
   });
 
@@ -210,6 +201,15 @@ export const updateOrder = asyncHandler(async (req, res) => {
   if (deliveryDate !== undefined) order.deliveryDate = deliveryDate || undefined;
   if (remarks !== undefined) order.remarks = remarks;
 
+  await order.save();
+  const updated = await populateOrder(Order.findById(order._id));
+  res.json({ order: updated });
+});
+
+export const closeOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) throw ApiError.notFound();
+  order.status = ORDER_STATUS.CLOSED;
   await order.save();
   const updated = await populateOrder(Order.findById(order._id));
   res.json({ order: updated });

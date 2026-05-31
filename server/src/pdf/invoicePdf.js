@@ -122,69 +122,49 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   doc.font('Helvetica').fontSize(8.5).text('Original for Recipient', LEFT, y + 25, { width: W, align: 'center' });
   y += 40;
 
-  // --- IRN / Ack Block ---
-  doc.rect(LEFT, y, W, 35).stroke();
-  doc.font('Helvetica').fontSize(7.5);
-  doc.text(`IRN : ${invoice.irn || '4d5a6f72c0110994373cdd1bddb9e0645e66fbda3d74-825b04fd67089a9a37ef'}`, LEFT + 5, y + 4);
-  doc.text(`Ack No : ${invoice.ackNo || '182519105144093'}`, LEFT + 5, y + 14);
-  doc.text(`Ack Date : ${invoice.generatedAt ? new Date(invoice.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : ''}`, LEFT + 5, y + 24);
-  y += 35;
+  // --- Metadata Grid Block (Supplier info and IRN removed, full width grid) ---
+  const gridH = 80;
+  const col1W = W * 0.6;
+  const col2W = W * 0.4;
+  const rH = 20;
 
-  // --- Supplier & Metadata Block ---
-  const supplierH = 125;
-  doc.rect(LEFT, y, W, supplierH).stroke();
+  doc.rect(LEFT, y, W, gridH).stroke();
+  vLine(LEFT + col1W, y, y + gridH);
+  line(y + rH, LEFT, RIGHT);
+  line(y + rH * 2, LEFT, RIGHT);
+  line(y + rH * 3, LEFT, RIGHT);
 
-  const leftW = W * 0.55;
-  const rightW = W - leftW;
+  // Row 1
+  let cy = y;
+  cell('Invoice/Challan No:', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
+  cell(invoice.invoiceNumber, LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 8 });
+  cell('Dated:', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
+  cell(invoice.generatedAt ? new Date(invoice.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '', LEFT + col1W, cy + 7, col2W, rH - 7, { border: false, bold: true, size: 8 });
 
-  // Left: Supplier
-  doc.font('Helvetica-Bold').fontSize(8).text('SUPPLIER (YOUR COMPANY)', LEFT + 5, y + 4);
-  doc.font('Helvetica-Bold').fontSize(10).text(company.companyName || 'COMPANY NAME', LEFT + 5, y + 14);
-  doc.font('Helvetica').fontSize(7.5);
-  doc.text(`Reg Address: ${company.regAddress || 'Punitata, India'}`, LEFT + 5, y + 28, { width: leftW - 15 });
-  doc.text(`UDYAM Reg No. : ${company.udyamNo || 'UDYAM-WB-10-0009130 (Medium)'}`, LEFT + 5, y + 50);
-  doc.text(`GSTIN Name: ${company.companyName}, Code : 14`, LEFT + 5, y + 62);
-  doc.font('Helvetica-Bold').text(`GSTIN: ${company.gstin || ''}`, LEFT + 5, y + 74);
-  doc.font('Helvetica').text(`E-mail : ${company.email || ''}`, LEFT + 5, y + 86);
+  // Row 2
+  cy += rH;
+  cell('Reference No. & Date:', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
+  cell(invoice.invoiceNumber, LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 7.5 });
+  cell('Other References:', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
 
-  vLine(LEFT + leftW, y, y + supplierH);
+  // Row 3
+  cy += rH;
+  cell('Dispatch Doc No.', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
+  cell(invoice.dispatch?.dispatchNumber || '', LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 7.5 });
+  cell('Delivery Note Date', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
 
-  // Right: Metadata Grid
-  const rowH = supplierH / 6;
-  let gy = y;
+  // Row 4
+  cy += rH;
+  cell('Dispatched through', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
+  cell('RAJARHAT PLANT', LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 7.5 });
+  cell('Destination', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
+  cell('NEWTOWN', LEFT + col1W, cy + 7, col2W, rH - 7, { border: false, bold: true, size: 7.5 });
 
-  cell('Invoice/Challan No:', LEFT + leftW, gy, rightW * 0.6, rowH, { size: 6.5 });
-  cell(invoice.invoiceNumber, LEFT + leftW, gy + 7, rightW * 0.6, rowH - 7, { border: false, bold: true, size: 8 });
-  cell('Dated:', LEFT + leftW + rightW * 0.6, gy, rightW * 0.4, rowH, { size: 6.5 });
-  cell(invoice.generatedAt ? new Date(invoice.generatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '', LEFT + leftW + rightW * 0.6, gy + 7, rightW * 0.4, rowH - 7, { border: false, bold: true, size: 8 });
-
-  gy += rowH;
-  cell('Delivery Note:', LEFT + leftW, gy, rightW * 0.6, rowH, { size: 6.5 });
-  cell('Mode/Terms of Payment:', LEFT + leftW + rightW * 0.6, gy, rightW * 0.4, rowH, { size: 6.5 });
-
-  gy += rowH;
-  cell('Reference No. & Date:', LEFT + leftW, gy, rightW * 0.6, rowH, { size: 6.5 });
-  cell(invoice.invoiceNumber, LEFT + leftW, gy + 7, rightW * 0.6, rowH - 7, { border: false, bold: true, size: 7.5 });
-  cell('Other References:', LEFT + leftW + rightW * 0.6, gy, rightW * 0.4, rowH, { size: 6.5 });
-
-  gy += rowH;
-  cell("Buyer's Order No.", LEFT + leftW, gy, rightW * 0.6, rowH, { size: 6.5 });
-  cell('Dated', LEFT + leftW + rightW * 0.6, gy, rightW * 0.4, rowH, { size: 6.5 });
-
-  gy += rowH;
-  cell('Dispatch Doc No.', LEFT + leftW, gy, rightW * 0.6, rowH, { size: 6.5 });
-  cell(invoice.dispatch?.dispatchNumber || '', LEFT + leftW, gy + 7, rightW * 0.6, rowH - 7, { border: false, bold: true, size: 7.5 });
-  cell('Delivery Note Date', LEFT + leftW + rightW * 0.6, gy, rightW * 0.4, rowH, { size: 6.5 });
-
-  gy += rowH;
-  cell('Dispatched through', LEFT + leftW, gy, rightW * 0.6, rowH, { size: 6.5 });
-  cell('RAJARHAT PLANT', LEFT + leftW, gy + 7, rightW * 0.6, rowH - 7, { border: false, bold: true, size: 7.5 });
-  cell('Destination', LEFT + leftW + rightW * 0.6, gy, rightW * 0.4, rowH, { size: 6.5 });
-  cell('NEWTOWN', LEFT + leftW + rightW * 0.6, gy + 7, rightW * 0.4, rowH - 7, { border: false, bold: true, size: 7.5 });
-
-  y += supplierH;
+  y += gridH;
 
   // --- Consignee & Buyer Block ---
+  const leftW = W * 0.55;
+  const rightW = W - leftW;
   const partyH = 70;
   doc.rect(LEFT, y, leftW, partyH).stroke();
   doc.font('Helvetica-Bold').fontSize(7.5).text('CONSIGNEE (SHIP-TO)', LEFT + 5, y + 4);
@@ -251,8 +231,8 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   cell(invoice.grade?.hsnCode || '38245010', tx, y, cols[2].w, itemH, { align: 'center' }); tx += cols[2].w;
   cell('M³', tx, y, cols[3].w, itemH, { align: 'center' }); tx += cols[3].w;
   cell(invoice.quantity.toFixed(2), tx, y, cols[4].w, itemH, { align: 'center' }); tx += cols[4].w;
-  cell(invoice.rate.toFixed(2), tx, y, cols[5].w, itemH, { align: 'center' }); tx += cols[5].w;
-  cell(invoice.amount.toFixed(2), tx, y, cols[6].w, itemH, { align: 'right' }); tx += cols[6].w;
+  cell(invoice.showRateOnInvoice ? invoice.rate.toFixed(2) : '—', tx, y, cols[5].w, itemH, { align: 'center' }); tx += cols[5].w;
+  cell(invoice.showRateOnInvoice ? invoice.amount.toFixed(2) : '—', tx, y, cols[6].w, itemH, { align: 'right' }); tx += cols[6].w;
   y += itemH;
 
   // Table Totals
@@ -265,50 +245,52 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   const roundOff = roundedTotal - subtotal;
 
   cell('Output CGST', LEFT, y, totalLabelW, subH, { align: 'right', size: 7 });
-  cell(cgst.toFixed(2), LEFT + totalLabelW, y, cols[6].w, subH, { align: 'right', size: 7 });
+  cell(invoice.showRateOnInvoice ? cgst.toFixed(2) : '—', LEFT + totalLabelW, y, cols[6].w, subH, { align: 'right', size: 7 });
   y += subH;
   cell('Output SGST', LEFT, y, totalLabelW, subH, { align: 'right', size: 7 });
-  cell(sgst.toFixed(2), LEFT + totalLabelW, y, cols[6].w, subH, { align: 'right', size: 7 });
+  cell(invoice.showRateOnInvoice ? sgst.toFixed(2) : '—', LEFT + totalLabelW, y, cols[6].w, subH, { align: 'right', size: 7 });
   y += subH;
   cell('Round Off', LEFT, y, totalLabelW, subH, { align: 'right', size: 7 });
-  cell(roundOff.toFixed(2), LEFT + totalLabelW, y, cols[6].w, subH, { align: 'right', size: 7 });
+  cell(invoice.showRateOnInvoice ? roundOff.toFixed(2) : '—', LEFT + totalLabelW, y, cols[6].w, subH, { align: 'right', size: 7 });
   y += subH;
 
   cell('Total', LEFT, y, totalLabelW - cols[4].w - cols[5].w, subH, { bold: true, align: 'right', bg: '#f2f2f2', size: 7.5 });
   cell(invoice.quantity.toFixed(2), LEFT + (totalLabelW - cols[4].w - cols[5].w), y, cols[4].w, subH, { bold: true, align: 'center', bg: '#f2f2f2', size: 7.5 });
   cell('', LEFT + (totalLabelW - cols[5].w), y, cols[5].w, subH, { bg: '#f2f2f2' });
-  cell(roundedTotal.toFixed(2), LEFT + totalLabelW, y, cols[6].w, subH, { bold: true, align: 'right', bg: '#f2f2f2', size: 7.5 });
+  cell(invoice.showRateOnInvoice ? roundedTotal.toFixed(2) : '—', LEFT + totalLabelW, y, cols[6].w, subH, { bold: true, align: 'right', bg: '#f2f2f2', size: 7.5 });
   y += subH + 8;
 
-  // --- Tax Summary ---
-  const taxCols = [
-    { label: 'HSN/SAC', w: 70 },
-    { label: 'Taxable Value', w: 80 },
-    { label: 'Output CGST', w: 100 },
-    { label: 'Output SGST', w: 100 },
-    { label: 'Total Tax', w: W - 350 }
-  ];
-  tx = LEFT;
-  taxCols.forEach(c => {
-    cell(c.label, tx, y, c.w, 18, { bold: true, align: 'center', valign: 'center', size: 6.5 });
-    tx += c.w;
-  });
-  y += 18;
-  tx = LEFT;
-  cell(invoice.grade?.hsnCode || '38245010', tx, y, taxCols[0].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[0].w;
-  cell(invoice.amount.toFixed(2), tx, y, taxCols[1].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[1].w;
-  cell(`9% ${cgst.toFixed(2)}`, tx, y, taxCols[2].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[2].w;
-  cell(`9% ${sgst.toFixed(2)}`, tx, y, taxCols[3].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[3].w;
-  cell((cgst + sgst).toFixed(2), tx, y, taxCols[4].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[4].w;
-  y += 15 + 5;
+  if (invoice.showRateOnInvoice) {
+    // --- Tax Summary ---
+    const taxCols = [
+      { label: 'HSN/SAC', w: 70 },
+      { label: 'Taxable Value', w: 80 },
+      { label: 'Output CGST', w: 100 },
+      { label: 'Output SGST', w: 100 },
+      { label: 'Total Tax', w: W - 350 }
+    ];
+    tx = LEFT;
+    taxCols.forEach(c => {
+      cell(c.label, tx, y, c.w, 18, { bold: true, align: 'center', valign: 'center', size: 6.5 });
+      tx += c.w;
+    });
+    y += 18;
+    tx = LEFT;
+    cell(invoice.grade?.hsnCode || '38245010', tx, y, taxCols[0].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[0].w;
+    cell(invoice.amount.toFixed(2), tx, y, taxCols[1].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[1].w;
+    cell(`9% ${cgst.toFixed(2)}`, tx, y, taxCols[2].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[2].w;
+    cell(`9% ${sgst.toFixed(2)}`, tx, y, taxCols[3].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[3].w;
+    cell((cgst + sgst).toFixed(2), tx, y, taxCols[4].w, 15, { align: 'center', size: 6.5 }); tx += taxCols[4].w;
+    y += 15 + 5;
 
-  // --- Words Section ---
-  cell('Amount Chargeable (in words):', LEFT, y, W, 12, { bold: true, border: false, size: 7 });
-  doc.font('Helvetica').fontSize(7.5).text(numberToWords(roundedTotal), LEFT + 5, y + 11);
-  y += 22;
-  cell('Tax Amount (in words):', LEFT, y, W, 12, { bold: true, border: false, size: 7 });
-  doc.font('Helvetica').fontSize(7.5).text(numberToWords(cgst + sgst), LEFT + 5, y + 11);
-  y += 22;
+    // --- Words Section ---
+    cell('Amount Chargeable (in words):', LEFT, y, W, 12, { bold: true, border: false, size: 7 });
+    doc.font('Helvetica').fontSize(7.5).text(numberToWords(roundedTotal), LEFT + 5, y + 11);
+    y += 22;
+    cell('Tax Amount (in words):', LEFT, y, W, 12, { bold: true, border: false, size: 7 });
+    doc.font('Helvetica').fontSize(7.5).text(numberToWords(cgst + sgst), LEFT + 5, y + 11);
+    y += 22;
+  }
 
   // --- Declaration & Terms ---
   const declH = 75;

@@ -2,20 +2,19 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { dispatches, invoices, batchsheets } from '../../api/endpoints.js';
+import { dispatches, invoices } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { fmtDateTime, fmtMoney } from '../../utils/format.js';
 
-const STATUS_STEPS = ['dispatched', 'sale_authorized', 'batchsheet', 'invoiced'];
+const STATUS_STEPS = ['dispatched', 'sale_authorized', 'invoiced'];
 
 function StatusPipeline({ current }) {
   const labels = {
     dispatched: 'Dispatched',
     sale_authorized: 'Sale Auth.',
-    batchsheet: 'Batchsheet',
     invoiced: 'Invoiced',
   };
-  const stepMap = { dispatched: 0, sale_authorized: 1, batchsheet: 2, invoiced: 3 };
+  const stepMap = { dispatched: 0, sale_authorized: 1, invoiced: 2 };
   const idx = stepMap[current] ?? -1;
   return (
     <div className="flex items-center justify-between gap-1 w-full max-w-md overflow-x-auto pb-1 no-scrollbar">
@@ -240,7 +239,6 @@ function StatusBadge({ status }) {
   const labels = {
     dispatched: 'Dispatched',
     sale_authorized: 'Sale Auth.',
-    batchsheet: 'Batchsheet Done',
     invoiced: 'Invoiced',
   };
   return <span className={cfg[status] || 'badge-gray'}>{labels[status] || status}</span>;
@@ -250,7 +248,6 @@ export default function L4Dispatches() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
-  const [batchModalTarget, setBatchModalTarget] = useState(null);
   const [invoiceModalTarget, setInvoiceModalTarget] = useState(null);
 
   const { data = [], isLoading } = useQuery({
@@ -259,16 +256,10 @@ export default function L4Dispatches() {
       statusFilter === 'all' ? dispatches.list() : dispatches.list({ status: statusFilter }),
   });
 
-  const { data: batchsheetsList = [] } = useQuery({
-    queryKey: ['batchsheets'],
-    queryFn: () => batchsheets.list(),
-  });
-
   const filters = [
     { key: 'all', label: 'All' },
     { key: 'dispatched', label: 'Dispatched' },
     { key: 'sale_authorized', label: 'Sale Authorized' },
-    { key: 'batchsheet', label: 'Batchsheet Done' },
     { key: 'invoiced', label: 'Invoiced' },
   ];
 
@@ -303,9 +294,7 @@ export default function L4Dispatches() {
           </svg>
           <span>
             <strong>{data.filter((d) => d.status === 'sale_authorized').length}</strong> dispatch(es) are sale authorized.
-            You can now generate batchsheets and invoices.{' '}
-            <a href="/l4/batchsheets" className="font-semibold underline">Batchsheets →</a>
-            {' · '}
+            You can now generate invoices.{' '}
             <a href="/l4/invoices" className="font-semibold underline">Invoices →</a>
           </span>
         </div>
@@ -379,38 +368,12 @@ export default function L4Dispatches() {
 
                 {/* STEP 2 — Sale authorized */}
                 {d.status === 'sale_authorized' && (
-                  <>
-                    <button
-                      onClick={() => navigate('/l4/batchsheets', { state: { dispatchId: d._id } })}
-                      className="btn-primary bg-indigo-600 hover:bg-indigo-700 text-[11px] py-2.5 px-4 shadow-lg shadow-indigo-100"
-                    >
-                      📋 Fill Batchsheet
-                    </button>
-                    <button
-                      onClick={() => navigate('/l4/invoices', { state: { dispatchId: d._id } })}
-                      className="btn-secondary border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] py-2.5 px-4"
-                    >
-                      🧾 Generate Invoice
-                    </button>
-                  </>
-                )}
-
-                {/* STEP 3 — Batchsheet Done: can do Invoice */}
-                {d.status === 'batchsheet' && (
-                  <>
-                    <button
-                      onClick={() => navigate('/l4/batchsheets', { state: { dispatchId: d._id } })}
-                      className="btn-secondary border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-[11px] py-2.5 px-4"
-                    >
-                      📋 Edit Batchsheet
-                    </button>
-                    <button
-                      onClick={() => navigate('/l4/invoices', { state: { dispatchId: d._id } })}
-                      className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-[11px] py-2.5 px-4 shadow-lg shadow-emerald-100"
-                    >
-                      🧾 Generate Invoice
-                    </button>
-                  </>
+                  <button
+                    onClick={() => navigate('/l4/invoices', { state: { dispatchId: d._id } })}
+                    className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-[11px] py-2.5 px-4 shadow-lg shadow-emerald-100"
+                  >
+                    🧾 Generate Invoice
+                  </button>
                 )}
 
                 {/* STEP 4 — Invoiced: readonly */}
@@ -438,14 +401,7 @@ export default function L4Dispatches() {
         )}
       </div>
 
-      {batchModalTarget && (
-        <BatchsheetModal
-          dispatch={batchModalTarget}
-          existingBatchsheet={batchsheetsList.find(b => b.dispatch?._id === batchModalTarget._id || b.dispatch === batchModalTarget._id)}
-          onClose={() => setBatchModalTarget(null)}
-          onSaved={() => setBatchModalTarget(null)}
-        />
-      )}
+
 
       {invoiceModalTarget && (
         <InvoiceModal

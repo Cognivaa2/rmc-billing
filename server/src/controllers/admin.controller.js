@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { DispatchForm } from '../models/DispatchForm.js';
-import { Batchsheet } from '../models/Batchsheet.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { CompanySettings, getOrCreateSettings } from '../models/CompanySettings.js';
 
@@ -40,16 +39,6 @@ export const deleteDispatchData = asyncHandler(async (req, res) => {
   res.json({ deletedCount: result.deletedCount });
 });
 
-// Per brief: L1 deletion is limited to batchsheet data only.
-export const deleteBatchsheetData = asyncHandler(async (req, res) => {
-  const { from, to, ids } = req.body;
-  const filter = {};
-  if (ids?.length) filter._id = { $in: ids };
-  const range = buildDateFilter({ from, to });
-  if (range) filter.generatedAt = range;
-  const result = await Batchsheet.deleteMany(filter);
-  res.json({ deletedCount: result.deletedCount });
-});
 
 // Company settings — read by all authenticated users (needed for PDF generation)
 export const getCompanySettings = asyncHandler(async (req, res) => {

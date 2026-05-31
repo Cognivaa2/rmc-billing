@@ -11,18 +11,16 @@ import { connectDb } from './config/db.js';
 import { logger } from './utils/logger.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { initSocket } from './sockets/index.js';
+import { initNotificationCron } from './cron/notification.cron.js';
 
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import clientRoutes from './routes/client.routes.js';
 import siteRoutes from './routes/site.routes.js';
 import gradeRoutes from './routes/grade.routes.js';
-import salesOrderRoutes from './routes/salesOrder.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import dispatchRoutes from './routes/dispatch.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
-import batchsheetTemplateRoutes from './routes/batchsheetTemplate.routes.js';
-import batchsheetRoutes from './routes/batchsheet.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import reportRoutes from './routes/report.routes.js';
@@ -66,12 +64,9 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/clients', clientRoutes);
 app.use('/api/v1/sites', siteRoutes);
 app.use('/api/v1/grades', gradeRoutes);
-app.use('/api/v1/sales-orders', salesOrderRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/dispatches', dispatchRoutes);
 app.use('/api/v1/invoices', invoiceRoutes);
-app.use('/api/v1/batchsheet-templates', batchsheetTemplateRoutes);
-app.use('/api/v1/batchsheets', batchsheetRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reports', reportRoutes);
@@ -81,6 +76,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 initSocket(httpServer);
+initNotificationCron();
 
 async function start() {
   logger.info('Starting server...');

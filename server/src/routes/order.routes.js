@@ -8,6 +8,7 @@ import {
   approveOrder,
   rejectOrder,
   authorizeSale,
+  closeOrder,
   updateOrder,
   updateOrderSchema,
   createOrderSchema,
@@ -23,6 +24,7 @@ router.post('/', rbac(3), validate(createOrderSchema), createOrder);
 router.patch('/:id/approve', rbac(2), approveOrder);
 router.patch('/:id/reject', rbac(2), rejectOrder);
 router.patch('/:id/authorize-sale', rbac(2), authorizeSale);
+router.patch('/:id/close', rbac(2), closeOrder);
 
 // Generic /:id routes last
 router.get('/:id', getOrder);

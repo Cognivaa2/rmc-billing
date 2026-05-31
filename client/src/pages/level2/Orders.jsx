@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { orders, salesOrders, dispatches } from '../../api/endpoints.js';
+import { orders, dispatches } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { fmtMoney, fmtDateTime, fmtDate } from '../../utils/format.js';
+import { fmtMoney, fmtDate } from '../../utils/format.js';
 
 const FILTERS = [
   { key: 'PENDING', label: 'Pending' },
@@ -69,170 +69,9 @@ function RejectModal({ order, onClose, onConfirm, isPending }) {
   );
 }
 
-/* ─── Create SO Modal ──────────────────────────────────────────────────── */
-function CreateSoModal({ order, onClose, onConfirm, isPending, error }) {
-  const { data: sos = [] } = useQuery({
-    queryKey: ['sales-orders'],
-    queryFn: () => salesOrders.list(),
-  });
-
-  const allocated = sos
-    .filter(so => so.sourceOrder === order._id || so.sourceOrder?._id === order._id)
-    .reduce((sum, so) => sum + so.totalQuantity, 0);
-  const remaining = order.quantity - allocated;
-
-  const [vehicles, setVehicles] = useState('');
-  const [quantity, setQuantity] = useState(remaining > 0 ? remaining : 0);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📋</span>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Create Sales Order</h2>
-              <p className="text-xs text-blue-200">{order.orderNumber} · {order.client?.clientName}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Pre-filled fields (read-only) */}
-        <div className="px-6 pt-5 pb-2">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Order Context
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-              <p className="text-xs text-slate-400 mb-0.5">Grade</p>
-              <p className="font-semibold text-slate-800 text-sm">{order.grade || '—'}</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-              <p className="text-xs text-slate-400 mb-0.5">Total Qty</p>
-              <p className="font-semibold text-slate-800 text-sm">{order.quantity} m³</p>
-            </div>
-            <div className={`rounded-xl border px-3 py-2.5 ${remaining > 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
-              <p className={`text-xs mb-0.5 ${remaining > 0 ? 'text-blue-500' : 'text-red-400'}`}>Remaining</p>
-              <p className={`font-bold text-sm ${remaining > 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                {remaining} m³
-              </p>
-            </div>
-          </div>
-
-          {/* Already-allocated SOs for this order */}
-          {sos.filter(so => so.sourceOrder === order._id || so.sourceOrder?._id === order._id).length > 0 && (
-            <div className="mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-              <p className="text-xs font-semibold text-slate-400 mb-1.5">Existing Sales Orders for this Order</p>
-              <div className="space-y-1">
-                {sos.filter(so => so.sourceOrder === order._id || so.sourceOrder?._id === order._id).map(so => (
-                  <div key={so._id} className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-700">{so.soNumber}</span>
-                    <span className="text-slate-500">{so.totalQuantity} m³</span>
-                    <span className={`rounded-full px-2 py-0.5 font-medium ${so.status === 'open' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                      }`}>{so.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {remaining <= 0 && (
-            <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
-              ⚠ All {order.quantity} m³ has already been allocated to Sales Orders. No remaining quantity available.
-            </div>
-          )}
-
-          {/* Site info */}
-          {order.site?.siteName && (
-            <div className="mb-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 flex items-center gap-2">
-              <span className="text-xs text-slate-400">Site:</span>
-              <span className="text-xs font-medium text-slate-700">{order.site.siteName}</span>
-            </div>
-          )}
-
-          {/* Editable fields */}
-          <div className="mb-1">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              New SO Details
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="label mb-1 block font-medium text-slate-700">
-                  Quantity (m³) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  max={remaining > 0 ? remaining : 0}
-                  className="input w-full font-semibold"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label mb-1 block font-medium text-slate-700">
-                  Number of Vehicles <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  className="input w-full font-semibold"
-                  placeholder="e.g. 4"
-                  value={vehicles}
-                  onChange={(e) => setVehicles(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
-              ⚠ {error}
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
-          <button
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
-            onClick={onClose}
-            disabled={isPending}
-          >
-            Cancel
-          </button>
-          <button
-            id="so-create-btn"
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 transition disabled:opacity-60 flex items-center gap-2"
-            onClick={() => onConfirm(Number(vehicles), Number(quantity))}
-            disabled={isPending || !vehicles || Number(vehicles) < 1 || !quantity || Number(quantity) <= 0 || remaining <= 0}
-          >
-            {isPending ? (
-              <>
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-                Creating…
-              </>
-            ) : (
-              '📋 Create Sales Order'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Authorize Sale Modal ─────────────────────────────────────────────── */
 function AuthorizeSaleModal({ order, onClose, onConfirm, isPending }) {
   const [selectedDispatches, setSelectedDispatches] = useState(new Set());
-
   const { data: dispatchesData = [], isLoading } = useQuery({
     queryKey: ['dispatches', 'order', order._id],
     queryFn: () => dispatches.list({ order: order._id, status: 'dispatched' }),
@@ -255,13 +94,6 @@ function AuthorizeSaleModal({ order, onClose, onConfirm, isPending }) {
   const handleConfirm = () => {
     onConfirm(Array.from(selectedDispatches));
   };
-
-  const groupedDispatches = dispatchesData.reduce((acc, d) => {
-    const soKey = d.salesOrder?.soNumber || 'Legacy Order';
-    if (!acc[soKey]) acc[soKey] = [];
-    acc[soKey].push(d);
-    return acc;
-  }, {});
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -288,47 +120,38 @@ function AuthorizeSaleModal({ order, onClose, onConfirm, isPending }) {
           ) : dispatchesData.length === 0 ? (
             <div className="py-8 text-center text-sm text-slate-400">No pending dispatches found for this order.</div>
           ) : (
-            <div className="space-y-6">
-              {Object.entries(groupedDispatches).map(([soNumber, dispatches]) => (
-                <div key={soNumber}>
-                  <h3 className="mb-3 text-sm font-bold text-slate-700 bg-slate-100 py-1.5 px-3 rounded-lg inline-block">
-                    Sales Order: {soNumber}
-                  </h3>
-                  <div className="space-y-3 pl-2 border-l-2 border-slate-100">
-                    {dispatches.map((d) => (
-                      <div 
-                        key={d._id} 
-                        className={`rounded-xl border p-4 cursor-pointer transition-all ${selectedDispatches.has(d._id) ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
-                        onClick={() => toggleSelection(d._id)}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="font-semibold text-slate-800">{d.dispatchNumber}</div>
-                          <div className={`h-5 w-5 rounded border flex items-center justify-center ${selectedDispatches.has(d._id) ? 'bg-violet-600 border-violet-600' : 'bg-white border-slate-300'}`}>
-                            {selectedDispatches.has(d._id) && (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm mt-1 opacity-90">
-                          <div>
-                            <p className="text-xs text-slate-400">Vehicle Number</p>
-                            <p className="font-semibold font-mono text-slate-700 uppercase">{d.vehicleNumber || '—'}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-400">Driver Name</p>
-                            <p className="font-medium text-slate-700">{d.driverName || '—'}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-400">Quantity</p>
-                            <p className="font-bold text-violet-700">{d.quantity} m³</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-400">Site Name</p>
-                            <p className="font-medium text-slate-700 truncate" title={d.site?.siteName}>{d.site?.siteName || '—'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+            <div className="space-y-3">
+              {dispatchesData.map((d) => (
+                <div
+                  key={d._id}
+                  className={`rounded-xl border p-4 cursor-pointer transition-all ${selectedDispatches.has(d._id) ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
+                  onClick={() => toggleSelection(d._id)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold text-slate-800">{d.dispatchNumber}</div>
+                    <div className={`h-5 w-5 rounded border flex items-center justify-center ${selectedDispatches.has(d._id) ? 'bg-violet-600 border-violet-600' : 'bg-white border-slate-300'}`}>
+                      {selectedDispatches.has(d._id) && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm mt-1 opacity-90">
+                    <div>
+                      <p className="text-xs text-slate-400">Vehicle Number</p>
+                      <p className="font-semibold font-mono text-slate-700 uppercase">{d.vehicleNumber || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Driver Name</p>
+                      <p className="font-medium text-slate-700">{d.driverName || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Quantity</p>
+                      <p className="font-bold text-violet-700">{d.quantity} m³</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Site Name</p>
+                      <p className="font-medium text-slate-700 truncate" title={d.site?.siteName}>{d.site?.siteName || '—'}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -374,9 +197,7 @@ export default function L2Orders() {
   const qc = useQueryClient();
   const [activeFilter, setActiveFilter] = useState(location.state?.filter || 'PENDING');
   const [rejectTarget, setRejectTarget] = useState(null);
-  const [soTarget, setSoTarget] = useState(null);   // order for Create SO modal
-  const [authTarget, setAuthTarget] = useState(null); // order for Authorize Sale modal
-  const [soError, setSoError] = useState('');
+  const [authTarget, setAuthTarget] = useState(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['orders', activeFilter],
@@ -398,26 +219,19 @@ export default function L2Orders() {
     },
   });
 
-  const createSo = useMutation({
-    mutationFn: ({ orderId, numberOfVehicles, quantity }) =>
-      salesOrders.createFromOrder(orderId, numberOfVehicles, quantity),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sales-orders'] });
-      qc.invalidateQueries({ queryKey: ['orders'] });
-      setSoTarget(null);
-      setSoError('');
-    },
-    onError: (err) => {
-      setSoError(err?.response?.data?.error || 'Failed to create Sales Order');
-    },
-  });
-
   const authorizeSale = useMutation({
     mutationFn: ({ id, dispatchIds }) => orders.authorizeSale(id, { dispatchIds }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['orders'] });
       qc.invalidateQueries({ queryKey: ['dispatches'] });
       setAuthTarget(null);
+    },
+  });
+
+  const closeOrder = useMutation({
+    mutationFn: (id) => orders.close(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['orders'] });
     },
   });
 
@@ -430,11 +244,6 @@ export default function L2Orders() {
     acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
   }, {});
-
-  const openSoModal = (order) => {
-    setSoError('');
-    setSoTarget(order);
-  };
 
   return (
     <>
@@ -450,16 +259,16 @@ export default function L2Orders() {
             key={f.key}
             onClick={() => setActiveFilter(f.key)}
             className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${activeFilter === f.key
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              ? 'bg-brand-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
               }`}
           >
             {f.label}
             {counts[f.key] > 0 && (
               <span
                 className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${activeFilter === f.key
-                    ? 'bg-white/20 text-white'
-                    : 'bg-slate-100 text-slate-500'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 text-slate-500'
                   }`}
               >
                 {counts[f.key]}
@@ -532,12 +341,9 @@ export default function L2Orders() {
                 </>
               )}
               {o.status === 'APPROVED' && (
-                <button
-                  className="w-full rounded-lg bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition shadow-sm flex items-center justify-center gap-2"
-                  onClick={() => openSoModal(o)}
-                >
-                  📋 Create Sales Order
-                </button>
+                <div className="w-full rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-600 font-medium text-center">
+                  ✓ Approved — awaiting L4 dispatch
+                </div>
               )}
               {o.status === 'DISPATCHED' && (
                 <button
@@ -545,6 +351,15 @@ export default function L2Orders() {
                   onClick={() => setAuthTarget(o)}
                 >
                   ✅ Authorize Sale
+                </button>
+              )}
+              {o.status === 'INVOICED' && (
+                <button
+                  className="w-full rounded-lg bg-emerald-600 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-2"
+                  onClick={() => closeOrder.mutate(o._id)}
+                  disabled={closeOrder.isPending}
+                >
+                  🔒 Close Order
                 </button>
               )}
             </div>
@@ -637,12 +452,9 @@ export default function L2Orders() {
                       </>
                     )}
                     {o.status === 'APPROVED' && (
-                      <button
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-sm active:scale-95"
-                        onClick={() => openSoModal(o)}
-                      >
-                        📋 Create SO
-                      </button>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-600">
+                        ✓ Awaiting L4 Dispatch
+                      </span>
                     )}
                     {o.status === 'DISPATCHED' && (
                       <button
@@ -650,6 +462,15 @@ export default function L2Orders() {
                         onClick={() => setAuthTarget(o)}
                       >
                         ✅ Authorize Sale
+                      </button>
+                    )}
+                    {o.status === 'INVOICED' && (
+                      <button
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
+                        onClick={() => closeOrder.mutate(o._id)}
+                        disabled={closeOrder.isPending}
+                      >
+                        🔒 Close Order
                       </button>
                     )}
                   </div>
@@ -667,19 +488,6 @@ export default function L2Orders() {
           onClose={() => setRejectTarget(null)}
           onConfirm={(reason) => reject.mutate({ id: rejectTarget._id, reason })}
           isPending={reject.isPending}
-        />
-      )}
-
-      {/* Create SO Modal */}
-      {soTarget && (
-        <CreateSoModal
-          order={soTarget}
-          onClose={() => { setSoTarget(null); setSoError(''); }}
-          onConfirm={(numberOfVehicles, quantity) =>
-            createSo.mutate({ orderId: soTarget._id, numberOfVehicles, quantity })
-          }
-          isPending={createSo.isPending}
-          error={soError}
         />
       )}
 

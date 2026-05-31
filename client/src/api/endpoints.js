@@ -41,15 +41,6 @@ export const grades = {
   create: (data) => api.post('/grades', data).then((r) => r.data.grade),
 };
 
-export const salesOrders = {
-  list: (params) => api.get('/sales-orders', { params }).then((r) => r.data.salesOrders),
-  get: (id) => api.get(`/sales-orders/${id}`).then((r) => r.data.salesOrder),
-  create: (data) => api.post('/sales-orders', data).then((r) => r.data.salesOrder),
-  close: (id) => api.patch(`/sales-orders/${id}/close`).then((r) => r.data.salesOrder),
-  createFromOrder: (orderId, numberOfVehicles, quantity) =>
-    api.post(`/sales-orders/from-order/${orderId}`, { numberOfVehicles, quantity }).then((r) => r.data.salesOrder),
-};
-
 export const orders = {
   list: (params) => api.get('/orders', { params }).then((r) => r.data.orders),
   listPaginated: (params) => api.get('/orders', { params }).then((r) => r.data),
@@ -59,14 +50,13 @@ export const orders = {
   approve: (id) => api.patch(`/orders/${id}/approve`).then((r) => r.data.order),
   reject: (id, reason) => api.patch(`/orders/${id}/reject`, { reason }).then((r) => r.data.order),
   authorizeSale: (id, data) => api.patch(`/orders/${id}/authorize-sale`, data).then((r) => r.data.order),
+  close: (id) => api.patch(`/orders/${id}/close`).then((r) => r.data.order),
 };
 
 export const dispatches = {
   list: (params) => api.get('/dispatches', { params }).then((r) => r.data.dispatches),
   get: (id) => api.get(`/dispatches/${id}`).then((r) => r.data.dispatch),
   create: (data) => api.post('/dispatches', data).then((r) => r.data.dispatch),
-  createFromSalesOrder: (soId, data) =>
-    api.post('/dispatches', { salesOrder: soId, ...data }).then((r) => r.data.dispatch),
   authorize: (id) => api.patch(`/dispatches/${id}/authorize`).then((r) => r.data.dispatch),
 };
 
@@ -78,21 +68,6 @@ export const invoices = {
   pdfUrl: (id) => `${api.defaults.baseURL}/invoices/${id}/pdf`,
 };
 
-export const batchsheetTemplates = {
-  list: () => api.get('/batchsheet-templates').then((r) => r.data.templates),
-  create: (data) => api.post('/batchsheet-templates', data).then((r) => r.data.template),
-  update: (id, data) => api.patch(`/batchsheet-templates/${id}`, data).then((r) => r.data.template),
-};
-
-export const batchsheets = {
-  list: (params) => api.get('/batchsheets', { params }).then((r) => {
-    if (params && params.page !== undefined) return r.data;
-    return r.data.batchsheets;
-  }),
-  create: (data) => api.post('/batchsheets', data).then((r) => r.data.batchsheet),
-  update: (id, data) => api.patch(`/batchsheets/${id}`, data).then((r) => r.data.batchsheet),
-  pdfUrl: (id) => `${api.defaults.baseURL}/batchsheets/${id}/pdf`,
-};
 
 export const payments = {
   list: (params) => api.get('/payments', { params }).then((r) => {
@@ -111,7 +86,6 @@ export const notifications = {
 
 export const reports = {
   dailyDispatch: (params) => api.get('/reports/daily-dispatch', { params }).then((r) => r.data.rows),
-  salesOrders: (params) => api.get('/reports/sales-orders', { params }).then((r) => r.data.rows),
   clients: (params) => api.get('/reports/clients', { params }).then((r) => r.data.rows),
   downloadUrl: (name, params = {}) => {
     const base = api.defaults.baseURL + '/reports/' + name;
@@ -122,7 +96,6 @@ export const reports = {
 
 export const admin = {
   deleteDispatchData: (data) => api.delete('/admin/dispatch-data', { data }).then((r) => r.data),
-  deleteBatchsheetData: (data) => api.delete('/admin/batchsheet-data', { data }).then((r) => r.data),
 };
 
 export const companySettings = {

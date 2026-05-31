@@ -47,7 +47,7 @@ async function allocateInvoiceNumber() {
 
 export const createInvoice = asyncHandler(async (req, res) => {
   const dispatch = await DispatchForm.findById(req.body.dispatch)
-    .populate('salesOrder order client grade');
+    .populate('order client grade');
   if (!dispatch) throw ApiError.notFound('Dispatch not found');
 
   // Enforce Workflow: Dispatch must be sale_authorized or beyond
@@ -66,15 +66,14 @@ export const createInvoice = asyncHandler(async (req, res) => {
   const alloc = await allocateInvoiceNumber();
   const invoiceNumber = alloc.number;
 
-  const order = dispatch.salesOrder || dispatch.order;
-  const rate = dispatch.salesOrder?.rate || dispatch.order?.negotiatedRate || 0;
+  const order = dispatch.order;
+  const rate = dispatch.order?.negotiatedRate || 0;
   const amount = rate * dispatch.quantity;
 
   const invoice = await Invoice.create({
     invoiceNumber,
     dispatch: dispatch._id,
     order: dispatch.order?._id,
-    salesOrder: dispatch.salesOrder?._id,
     client: dispatch.client,
     grade: dispatch.grade,
     quantity: dispatch.quantity,
@@ -87,7 +86,7 @@ export const createInvoice = asyncHandler(async (req, res) => {
     syncStatus: 'synced',
   });
 
-  if (order && !dispatch.salesOrder) {
+  if (order) {
     order.status = ORDER_STATUS.INVOICED;
     await order.save();
   }

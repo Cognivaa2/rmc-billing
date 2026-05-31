@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useLocation } from 'react-router-dom';
 import { payments, clients, invoices } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { fmtDateTime, fmtMoney } from '../../utils/format.js';
+import { fmtDateTime, fmtMoney, fmtMoneyShort } from '../../utils/format.js';
 
 export default function L2Payments() {
   const qc = useQueryClient();
@@ -15,8 +15,9 @@ export default function L2Payments() {
   const [editingPayment, setEditingPayment] = useState(null);
 
   const { data: paymentsList = [], isLoading: pLoad } = useQuery({
-    queryKey: ['payments_all'],
+    queryKey: ['payments', 'all'],
     queryFn: () => payments.list({ limit: 10000 }),
+    staleTime: 30_000,
   });
 
   const { data: clientsList = [] } = useQuery({
@@ -32,14 +33,14 @@ export default function L2Payments() {
   const isLoading = pLoad || iLoad;
 
   const allRecords = useMemo(() => {
-    const paidInvoiceIds = new Set(
+    const recordedInvoiceIds = new Set(
       paymentsList
-        .filter((p) => p.paymentReceived && p.invoice)
+        .filter((p) => p.invoice)
         .map((p) => p.invoice._id || p.invoice)
     );
 
     const virtualPayments = invoicesList
-      .filter((inv) => !paidInvoiceIds.has(inv._id))
+      .filter((inv) => !recordedInvoiceIds.has(inv._id))
       .map((inv) => ({
         _id: 'v_' + inv._id,
         isVirtual: true,
@@ -94,7 +95,8 @@ export default function L2Payments() {
         remarks: d.remarks || undefined,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['payments_all'] });
+      qc.invalidateQueries({ queryKey: ['payments', 'all'] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
       setShowNew(false);
       reset({ paymentReceived: 'true' });
     },
@@ -111,7 +113,8 @@ export default function L2Payments() {
         remarks: d.remarks || undefined,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['payments_all'] });
+      qc.invalidateQueries({ queryKey: ['payments', 'all'] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
       setEditingPayment(null);
       reset({ paymentReceived: 'true' });
     },
@@ -130,7 +133,10 @@ export default function L2Payments() {
       }
       return payments.update(id, data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payments_all'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments', 'all'] });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+    },
   });
 
   const totalReceived = allRecords
@@ -171,13 +177,13 @@ export default function L2Payments() {
           <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
             Received
           </div>
-          <div className="mt-1 text-2xl font-bold text-emerald-700">{fmtMoney(totalReceived)}</div>
+          <div className="mt-1 text-2xl font-bold text-emerald-700">{fmtMoneyShort(totalReceived)}</div>
         </div>
         <div className="card card-body">
           <div className="text-xs font-semibold uppercase tracking-wide text-rose-500">
             Pending
           </div>
-          <div className="mt-1 text-2xl font-bold text-rose-600">{fmtMoney(totalPending)}</div>
+          <div className="mt-1 text-2xl font-bold text-rose-600">{fmtMoneyShort(totalPending)}</div>
         </div>
       </div>
 

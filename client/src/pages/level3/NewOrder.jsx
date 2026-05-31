@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { orders, clients, sites } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -8,6 +8,7 @@ const GRADES = ['M10', 'M15', 'M20', 'M25', 'M30', 'M35', 'M40', 'M45', 'M50'];
 
 export default function L3NewOrder() {
   const nav = useNavigate();
+  const qc = useQueryClient();
   const { register, handleSubmit, watch } = useForm({
     defaultValues: { deliveryDate: new Date().toISOString().slice(0, 10) },
   });
@@ -32,7 +33,10 @@ export default function L3NewOrder() {
         negotiatedRate: Number(d.negotiatedRate),
         site: d.site || undefined,
       }),
-    onSuccess: () => nav('/l3/orders'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      nav('/l3/orders');
+    },
   });
 
   return (

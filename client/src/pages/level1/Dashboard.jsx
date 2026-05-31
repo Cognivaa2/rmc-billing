@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { clients, payments, salesOrders, invoices } from '../../api/endpoints.js';
+import { clients, payments, orders, invoices } from '../../api/endpoints.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { fmtMoney, fmtDateTime } from '../../utils/format.js';
+import { fmtMoney, fmtDateTime, fmtMoneyShort } from '../../utils/format.js';
 
 /* ─── Icon helpers ──────────────────────────────────────────────────────── */
 const ClientIcon = () => (
@@ -103,7 +103,7 @@ export default function L1Dashboard() {
 
   const { data: soList = [], isLoading: loadingSo } = useQuery({
     queryKey: ['sales-orders', 'all'],
-    queryFn: () => salesOrders.list(),
+    queryFn: () => orders.list(),
   });
 
   const isLoading = loadingClients || loadingPayments || loadingInvoices || loadingSo;
@@ -183,7 +183,7 @@ export default function L1Dashboard() {
         {/* 2. Total Receipt Amount */}
         <StatCard
           title="Total Receipt Amount"
-          value={fmtMoney(totalReceiptAmount)}
+          value={fmtMoneyShort(totalReceiptAmount)}
           hint={`${totalPaymentCount} payment${totalPaymentCount !== 1 ? 's' : ''} received`}
           variant="emerald"
           icon={<ReceiptIcon />}
@@ -201,7 +201,7 @@ export default function L1Dashboard() {
         {/* 4. Pending / Not Received Amount */}
         <StatCard
           title="Pending Receipt Amount"
-          value={fmtMoney(pendingReceiptAmount)}
+          value={fmtMoneyShort(pendingReceiptAmount)}
           hint={`${pendingPaymentCount} unpaid payment record${pendingPaymentCount !== 1 ? 's' : ''}`}
           variant="rose"
           icon={<PendingIcon />}
@@ -288,9 +288,9 @@ export default function L1Dashboard() {
                   </tr>
                 ) : recentSo.map((so) => (
                   <tr key={so._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-700 text-xs">{so.soNumber}</td>
+                    <td className="px-4 py-3 font-mono font-bold text-slate-700 text-xs">{so.orderNumber || '—'}</td>
                     <td className="px-4 py-3 text-slate-700">{so.client?.clientName || '—'}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{so.totalQuantity} m³</td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{so.quantity ?? '—'} m³</td>
                     <td className="px-4 py-3 text-center">
                       {so.status === 'open' ? (
                         <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">

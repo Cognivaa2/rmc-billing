@@ -34,7 +34,6 @@ import L4ApprovedOrders from './pages/level4/ApprovedOrders.jsx';
 import L4Dispatches from './pages/level4/Dispatches.jsx';
 import L4SalesOrders from './pages/level4/SalesOrders.jsx';
 import L4Invoices from './pages/level4/Invoices.jsx';
-import L4Batchsheets from './pages/level4/Batchsheets.jsx';
 
 function HomeRedirect() {
   const { user, booted } = useAuth();
@@ -90,7 +89,6 @@ export default function App() {
         <Route path="/l4/sales-orders" element={<L4SalesOrders />} />
         <Route path="/l4/dispatches" element={<L4Dispatches />} />
         <Route path="/l4/invoices" element={<L4Invoices />} />
-        <Route path="/l4/batchsheets" element={<L4Batchsheets />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

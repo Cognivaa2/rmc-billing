@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const dispatchSchema = new mongoose.Schema(
   {
     dispatchNumber: { type: String, required: true, unique: true, index: true },
-    salesOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesOrder', index: true },
     order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', index: true },
     client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
     site: { type: mongoose.Schema.Types.ObjectId, ref: 'Site' },
@@ -16,7 +15,7 @@ const dispatchSchema = new mongoose.Schema(
     filledByLevel4: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     status: {
       type: String,
-      enum: ['dispatched', 'sale_authorized', 'batchsheet', 'invoiced'],
+      enum: ['dispatched', 'sale_authorized', 'invoiced'],
       default: 'dispatched',
       index: true,
     },

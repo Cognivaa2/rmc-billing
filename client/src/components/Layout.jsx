@@ -17,7 +17,6 @@ const NAV_BY_LEVEL = {
     { to: '/l2', label: 'Dashboard', icon: 'grid' },
     { to: '/l2/clients', label: 'Clients', icon: 'users' },
     { to: '/l2/orders', label: 'Orders', icon: 'star' },
-    { to: '/l2/sales-orders', label: 'Sales Orders', icon: 'deal' },
     { to: '/l2/invoices', label: 'Invoices', icon: 'receipt' },
     { to: '/l2/payments', label: 'Payments', icon: 'coin' },
   ],
@@ -27,10 +26,9 @@ const NAV_BY_LEVEL = {
   ],
   4: [
     { to: '/l4', label: 'Dashboard', icon: 'grid' },
-    { to: '/l4/sales-orders', label: 'Sales Orders', icon: 'deal' },
+    { to: '/l4/approved-orders', label: 'Approved Orders', icon: 'star' },
     { to: '/l4/dispatches', label: 'Dispatches', icon: 'truck' },
     { to: '/l4/invoices', label: 'Invoices', icon: 'receipt' },
-    { to: '/l4/batchsheets', label: 'Batchsheets', icon: 'document' },
   ],
 };
 
@@ -136,7 +134,7 @@ export function Layout() {
           items={items}
           user={user}
           levelLabel={levelLabel}
-          onLinkClick={() => {}}
+          onLinkClick={() => { }}
           onLogout={handleLogout}
         />
       </aside>
