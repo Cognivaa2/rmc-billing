@@ -57,6 +57,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 app.use('/api/', rateLimit({ windowMs: 60_000, max: 300 }));
 
+// Fallback path rewriter for clients missing the /api/v1 prefix
+app.use((req, res, next) => {
+  if (!req.url.startsWith('/api/v1') && req.url !== '/health' && !req.url.startsWith('/health')) {
+    req.url = `/api/v1${req.url}`;
+  }
+  next();
+});
+
 app.get('/health', (req, res) => res.json({ ok: true, env: env.nodeEnv }));
 
 app.use('/api/v1/auth', authRoutes);
