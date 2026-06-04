@@ -7,6 +7,8 @@ import {
   getInvoicePdf,
   createInvoice,
   createInvoiceSchema,
+  createInvoiceFromOrder,
+  createInvoiceFromOrderSchema,
 } from '../controllers/invoice.controller.js';
 
 const router = Router();
@@ -14,6 +16,7 @@ router.use(authMiddleware);
 
 router.get('/', listInvoices);
 router.post('/', rbac(4), validate(createInvoiceSchema), createInvoice);
+router.post('/from-order', rbac(4), validate(createInvoiceFromOrderSchema), createInvoiceFromOrder);
 router.get('/:id', getInvoice);
 router.get('/:id/pdf', getInvoicePdf);
 

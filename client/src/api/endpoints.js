@@ -65,6 +65,7 @@ export const invoices = {
   list: (params) => api.get('/invoices', { params }).then((r) => r.data.invoices),
   get: (id) => api.get(`/invoices/${id}`).then((r) => r.data.invoice),
   create: (data) => api.post('/invoices', data).then((r) => r.data.invoice),
+  createFromOrder: (data) => api.post('/invoices/from-order', data).then((r) => r.data.invoice),
   pdfUrl: (id) => `${api.defaults.baseURL}/invoices/${id}/pdf`,
 };
 

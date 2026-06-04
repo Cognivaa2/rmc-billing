@@ -6,6 +6,7 @@ export const ORDER_STATUS = Object.freeze({
   REJECTED: 'REJECTED',
   DISPATCHED: 'DISPATCHED',
   SALE_AUTHORIZED: 'SALE_AUTHORIZED',
+  PARTIALLY_INVOICED: 'PARTIALLY_INVOICED',
   INVOICED: 'INVOICED',
   CLOSED: 'CLOSED',
 });
@@ -34,6 +35,7 @@ const orderSchema = new mongoose.Schema(
     saleAuthorizedByLevel2: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     saleAuthorizedAt: Date,
     remarks: String,
+    invoicedQuantity: { type: Number, default: 0, min: 0 }, // tracks partial invoicing
   },
   { timestamps: true },
 );

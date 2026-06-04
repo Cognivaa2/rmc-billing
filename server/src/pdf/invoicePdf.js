@@ -15,6 +15,11 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   });
   doc.pipe(stream);
 
+  // When invoice was created directly from order (no dispatch), fall back to order fields
+  const site = invoice.dispatch?.site || invoice.order?.site;
+  const vehicleNumber = invoice.dispatch?.vehicleNumber || '';
+  const dispatchNumber = invoice.dispatch?.dispatchNumber || invoice.order?.orderNumber || '';
+
   const W = doc.page.width - 40;
   const LEFT = 20;
   const RIGHT = doc.page.width - 20;
@@ -123,16 +128,14 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   y += 40;
 
   // --- Metadata Grid Block (Supplier info and IRN removed, full width grid) ---
-  const gridH = 80;
+  const gridH = 40;
   const col1W = W * 0.6;
   const col2W = W * 0.4;
   const rH = 20;
 
   doc.rect(LEFT, y, W, gridH).stroke();
-  vLine(LEFT + col1W, y, y + gridH);
+  vLine(LEFT + col1W, y, y + rH); // only draw vertical line for Row 1
   line(y + rH, LEFT, RIGHT);
-  line(y + rH * 2, LEFT, RIGHT);
-  line(y + rH * 3, LEFT, RIGHT);
 
   // Row 1
   let cy = y;
@@ -143,66 +146,34 @@ export function renderInvoicePdf(stream, { invoice, company }) {
 
   // Row 2
   cy += rH;
-  cell('Reference No. & Date:', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
-  cell(invoice.invoiceNumber, LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 7.5 });
-  cell('Other References:', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
-
-  // Row 3
-  cy += rH;
-  cell('Dispatch Doc No.', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
-  cell(invoice.dispatch?.dispatchNumber || '', LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 7.5 });
-  cell('Delivery Note Date', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
-
-  // Row 4
-  cy += rH;
-  cell('Dispatched through', LEFT, cy, col1W, rH, { border: false, size: 6.5 });
-  cell('RAJARHAT PLANT', LEFT, cy + 7, col1W, rH - 7, { border: false, bold: true, size: 7.5 });
-  cell('Destination', LEFT + col1W, cy, col2W, rH, { border: false, size: 6.5 });
-  cell('NEWTOWN', LEFT + col1W, cy + 7, col2W, rH - 7, { border: false, bold: true, size: 7.5 });
+  cell('Dispatch Doc No.', LEFT, cy, W, rH, { border: false, size: 6.5 });
+  cell(dispatchNumber, LEFT, cy + 7, W, rH - 7, { border: false, bold: true, size: 7.5 });
 
   y += gridH;
 
   // --- Consignee & Buyer Block ---
-  const leftW = W * 0.55;
-  const rightW = W - leftW;
-  const partyH = 70;
-  doc.rect(LEFT, y, leftW, partyH).stroke();
+  const halfW = W / 2;
+  const blockH = 95;
+
+  // Consignee (Left)
+  doc.rect(LEFT, y, halfW, blockH).stroke();
   doc.font('Helvetica-Bold').fontSize(7.5).text('CONSIGNEE (SHIP-TO)', LEFT + 5, y + 4);
   doc.font('Helvetica-Bold').fontSize(8.5).text(invoice.client?.clientName || '', LEFT + 5, y + 14);
-  doc.font('Helvetica').fontSize(7.5).text(`Site: ${invoice.dispatch?.site?.siteName || ''}`, LEFT + 5, y + 23);
-  doc.text(`${invoice.dispatch?.site?.address || ''}`, LEFT + 5, y + 32, { width: leftW - 10 });
-  doc.font('Helvetica-Bold').fontSize(7.5).text(`GSTIN/ UIN : ${invoice.client?.gstin || ''}`, LEFT + 5, y + partyH - 12);
+  doc.font('Helvetica').fontSize(7.5).text(`Site: ${site?.siteName || ''}`, LEFT + 5, y + 23);
+  doc.text(`${site?.address || ''}`, LEFT + 5, y + 32, { width: halfW - 10 });
+  doc.font('Helvetica-Bold').fontSize(7.5).text(`GSTIN/ UIN : ${invoice.client?.taxInformation?.gstin || ''}`, LEFT + 5, y + blockH - 12);
 
-  y += partyH;
-  const buyerH = 80;
-  doc.rect(LEFT, y, leftW, buyerH).stroke();
-  doc.font('Helvetica-Bold').fontSize(7.5).text('BUYER (BILL-TO)', LEFT + 5, y + 4);
-  doc.font('Helvetica-Bold').fontSize(8.5).text(invoice.client?.clientName || '', LEFT + 5, y + 14);
-  doc.font('Helvetica').fontSize(7.5).text(invoice.client?.officeAddress || '', LEFT + 5, y + 23, { width: leftW - 10 });
-  doc.text(`Phone: ${invoice.client?.phone || ''}`, LEFT + 5, y + 40);
-  doc.font('Helvetica-Bold').fontSize(7.5).text(`GSTIN/ UIN : ${invoice.client?.gstin || ''}`, LEFT + 5, y + buyerH - 22);
-  doc.font('Helvetica-Bold').fontSize(7.5).text(`Place of Supply : West Bengal`, LEFT + 5, y + buyerH - 10);
+  // Buyer (Right)
+  const rightX = LEFT + halfW;
+  doc.rect(rightX, y, halfW, blockH).stroke();
+  doc.font('Helvetica-Bold').fontSize(7.5).text('BUYER (BILL-TO)', rightX + 5, y + 4);
+  doc.font('Helvetica-Bold').fontSize(8.5).text(invoice.client?.clientName || '', rightX + 5, y + 14);
+  doc.font('Helvetica').fontSize(7.5).text(invoice.client?.officeAddress || '', rightX + 5, y + 23, { width: halfW - 10 });
+  doc.text(`Phone: ${invoice.client?.contactNumber || ''}`, rightX + 5, y + 55);
+  doc.font('Helvetica-Bold').fontSize(7.5).text(`GSTIN/ UIN : ${invoice.client?.taxInformation?.gstin || ''}`, rightX + 5, y + blockH - 22);
+  doc.font('Helvetica-Bold').fontSize(7.5).text(`Place of Supply : West Bengal`, rightX + 5, y + blockH - 10);
 
-  // Right side of party info: Terms of Delivery
-  doc.rect(LEFT + leftW, y - partyH, rightW, partyH + buyerH).stroke();
-  doc.font('Helvetica').fontSize(7.5).text('Terms of Delivery', LEFT + leftW + 5, y - partyH + 4);
-
-  let dy = y - partyH + 20;
-  doc.font('Helvetica-Bold').fontSize(7).text('Dispatched through (e.g., PLANT)', LEFT + leftW + 5, dy);
-  doc.text('Destination (e.g., NEWTOWN SITE)', LEFT + leftW + 5, dy + 10);
-  doc.text(`Vehicle No: ${invoice.dispatch?.vehicleNumber || ''}`, LEFT + leftW + 5, dy + 20);
-
-  dy += 40;
-  line(dy, LEFT + leftW, RIGHT);
-  cell('Time In', LEFT + leftW, dy, rightW / 2, 18, { size: 6.5 });
-  cell('', LEFT + leftW + rightW / 2, dy, rightW / 2, 18, { size: 6.5 });
-
-  dy += 18;
-  line(dy, LEFT + leftW, RIGHT);
-  cell('Time out', LEFT + leftW, dy, rightW / 2, 18, { size: 6.5 });
-  cell('', LEFT + leftW + rightW / 2, dy, rightW / 2, 18, { size: 6.5 });
-
-  y += buyerH;
+  y += blockH;
 
   // --- Items Table ---
   const cols = [
@@ -227,7 +198,7 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   const itemH = 45;
   tx = LEFT;
   cell('1', tx, y, cols[0].w, itemH, { align: 'center' }); tx += cols[0].w;
-  cell(invoice.grade?.gradeCode || 'Ready Mix Concrete', tx, y, cols[1].w, itemH); tx += cols[1].w;
+  cell(invoice.grade?.gradeCode || invoice.gradeLabel || 'Ready Mix Concrete', tx, y, cols[1].w, itemH); tx += cols[1].w;
   cell(invoice.grade?.hsnCode || '38245010', tx, y, cols[2].w, itemH, { align: 'center' }); tx += cols[2].w;
   cell('M³', tx, y, cols[3].w, itemH, { align: 'center' }); tx += cols[3].w;
   cell(invoice.quantity.toFixed(2), tx, y, cols[4].w, itemH, { align: 'center' }); tx += cols[4].w;
@@ -296,7 +267,7 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   const declH = 75;
   doc.rect(LEFT, y, W, declH).stroke();
   doc.font('Helvetica-Bold').fontSize(7.5).text('Declaration:', LEFT + 5, y + 4);
-  doc.font('Helvetica').fontSize(7).text('We declare that this invoice show the actual price of the goods described and that all particulars are true and correct.', LEFT + 5, y + 12, { width: W * 0.45 });
+  doc.font('Helvetica').fontSize(7).text('We declare that this invoice show the actual price of the goods described and that all particulars are true and correct.', LEFT + 5, y + 12, { width: W * 0.7 });
   doc.text(`Company's PAN : ${company.pan || ''}`, LEFT + 5, y + 30);
 
   const tcY = y + 42;
@@ -305,23 +276,21 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   doc.text('• Interest @ 18% p.a. will be charged if payment is not made within due date.', LEFT + 5, tcY + 16);
   doc.text('• Subject to local jurisdiction.', LEFT + 5, tcY + 23);
 
-  vLine(LEFT + W * 0.5, y, y + declH);
   doc.font('Helvetica-Bold').fontSize(7.5).text(`for ${company.companyName || 'YOUR COMPANY NAME'}`, RIGHT - 180, y + 55, { width: 170, align: 'right' });
   doc.text('(Authorized Signatory)', RIGHT - 180, y + 64, { width: 170, align: 'right' });
 
   // --- Footer Details ---
   y += declH + 10;
   const footH = 35;
-  doc.rect(LEFT, y, W * 0.33, footH).stroke();
+  doc.rect(LEFT, y, W * 0.5, footH).stroke();
   doc.font('Helvetica-Bold').fontSize(6.5).text('Dispatch Details', LEFT + 5, y + 4);
   doc.font('Helvetica').fontSize(6.5).text('Dispatch approved by: ________________', LEFT + 5, y + 12);
   doc.text('Challan generated by: ________________', LEFT + 5, y + 20);
 
-  doc.rect(LEFT + W * 0.33, y, W * 0.33, footH).stroke();
-  doc.rect(LEFT + W * 0.66, y, W * 0.34, footH).stroke();
-  doc.font('Helvetica-Bold').fontSize(6.5).text('Receipt Details', LEFT + W * 0.66 + 5, y + 4);
-  doc.font('Helvetica').fontSize(6.5).text('Received by: ________________________', LEFT + W * 0.66 + 5, y + 12);
-  doc.text('Name / Designation: __________________', LEFT + W * 0.66 + 5, y + 20);
+  doc.rect(LEFT + W * 0.5, y, W * 0.5, footH).stroke();
+  doc.font('Helvetica-Bold').fontSize(6.5).text('Receipt Details', LEFT + W * 0.5 + 5, y + 4);
+  doc.font('Helvetica').fontSize(6.5).text('Received by: ________________________', LEFT + W * 0.5 + 5, y + 12);
+  doc.text('Name / Designation: __________________', LEFT + W * 0.5 + 5, y + 20);
 
   doc.font('Helvetica-Oblique').fontSize(6.5).text('This is a computer generated document and does not require a signature', LEFT, y + footH + 10, { width: W, align: 'center' });
 

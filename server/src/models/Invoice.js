@@ -3,10 +3,11 @@ import mongoose from 'mongoose';
 const invoiceSchema = new mongoose.Schema(
   {
     invoiceNumber: { type: String, required: true, unique: true, index: true },
-    dispatch: { type: mongoose.Schema.Types.ObjectId, ref: 'DispatchForm', required: true, index: true },
+    dispatch: { type: mongoose.Schema.Types.ObjectId, ref: 'DispatchForm', index: true },
     order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', index: true },
     client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
-    grade: { type: mongoose.Schema.Types.ObjectId, ref: 'ConcreteGrade', required: true },
+    grade: { type: mongoose.Schema.Types.ObjectId, ref: 'ConcreteGrade', index: true },
+    gradeLabel: { type: String },  // fallback plain-text grade (e.g. "M30") when no grade doc exists
     quantity: { type: Number, required: true, min: 0 },
     rate: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },

@@ -9,6 +9,7 @@ const FILTERS = [
   { key: 'ALL', label: 'All' },
   { key: 'PENDING', label: 'Pending' },
   { key: 'APPROVED', label: 'Approved' },
+  { key: 'PARTIALLY_INVOICED', label: 'Partially Invoiced' },
   { key: 'DISPATCHED', label: 'Dispatched' },
   { key: 'CLOSED', label: 'Closed' },
   { key: 'REJECTED', label: 'Rejected' },
@@ -17,6 +18,7 @@ const FILTERS = [
 const STATUS_BADGE = {
   PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   APPROVED: 'bg-blue-50 text-blue-700 border border-blue-200',
+  PARTIALLY_INVOICED: 'bg-orange-50 text-orange-700 border border-orange-200',
   REJECTED: 'bg-red-50 text-red-700 border border-red-200',
   DISPATCHED: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
   CLOSED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
@@ -24,12 +26,21 @@ const STATUS_BADGE = {
 
 const getNormalizedStatus = (status) => {
   if (['SALE_AUTHORIZED', 'INVOICED', 'CLOSED'].includes(status)) return 'CLOSED';
+  // PARTIALLY_INVOICED stays as-is for badge display but maps to APPROVED in pipeline
+  return status;
+};
+
+// For pipeline bar: map PARTIALLY_INVOICED → APPROVED step
+const getPipelineStatus = (status) => {
+  if (['SALE_AUTHORIZED', 'INVOICED', 'CLOSED'].includes(status)) return 'CLOSED';
+  if (status === 'PARTIALLY_INVOICED') return 'APPROVED';
   return status;
 };
 
 const STATUS_DESC = {
   PENDING: 'Waiting for Manager approval',
   APPROVED: 'Manager approved — ready for dispatch',
+  PARTIALLY_INVOICED: 'Invoice partially generated — remaining quantity pending',
   REJECTED: 'Order rejected by Manager',
   DISPATCHED: 'Dispatch in progress',
   CLOSED: 'Order closed by Manager',
@@ -38,7 +49,7 @@ const STATUS_DESC = {
 const PIPELINE_STEPS = ['PENDING', 'APPROVED', 'DISPATCHED', 'CLOSED'];
 
 function PipelineBar({ status }) {
-  const normStatus = getNormalizedStatus(status);
+  const normStatus = getPipelineStatus(status);
   const idx = PIPELINE_STEPS.indexOf(normStatus);
 
   return (
@@ -156,7 +167,8 @@ export default function L3MyOrders() {
         )}
 
         {ordersList.map((o) => {
-          const nStatus = getNormalizedStatus(o.status);
+          const nStatus = o.status; // keep raw status for badge
+          const isPartiallyInvoiced = o.status === 'PARTIALLY_INVOICED';
           const isRejected = o.status === 'REJECTED';
 
           return (
@@ -165,6 +177,7 @@ export default function L3MyOrders() {
               <div className={`absolute inset-y-0 left-0 w-1 ${isRejected ? 'bg-red-500' :
                 nStatus === 'CLOSED' ? 'bg-emerald-500' :
                   nStatus === 'DISPATCHED' ? 'bg-indigo-500' :
+                    nStatus === 'PARTIALLY_INVOICED' ? 'bg-orange-400' :
                     nStatus === 'APPROVED' ? 'bg-blue-500' : 'bg-amber-500'
                 }`} />
 
@@ -172,10 +185,10 @@ export default function L3MyOrders() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                   {/* Left: Identity */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <h3 className="text-lg font-bold tracking-tight text-slate-900">{o.orderNumber}</h3>
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-sm border ${STATUS_BADGE[nStatus] || 'bg-slate-100 text-slate-600'}`}>
-                        {FILTERS.find((f) => f.key === nStatus)?.label || o.status}
+                        {nStatus === 'PARTIALLY_INVOICED' ? '⚡ Partially Invoiced' : (FILTERS.find((f) => f.key === nStatus)?.label || o.status)}
                       </span>
                     </div>
 
@@ -253,8 +266,26 @@ export default function L3MyOrders() {
                     <div className="mx-auto max-w-xl">
                       <PipelineBar status={o.status} />
                       <p className="mt-4 text-center text-[11px] font-medium text-slate-400 italic">
-                        {STATUS_DESC[nStatus]}
+                        {STATUS_DESC[nStatus] || STATUS_DESC[getPipelineStatus(o.status)]}
                       </p>
+                      {/* Show partial invoice progress */}
+                      {isPartiallyInvoiced && o.invoicedQuantity != null && (
+                        <div className="mt-3 mx-auto max-w-sm">
+                          <div className="flex items-center justify-between text-[10px] font-bold mb-1">
+                            <span className="text-slate-400 uppercase tracking-widest">Invoiced</span>
+                            <span className="text-slate-600">
+                              <span className="text-orange-600">{o.invoicedQuantity}</span> / {o.quantity} m³
+                              <span className="ml-1.5 text-slate-400">({Math.round((o.invoicedQuantity / o.quantity) * 100)}%)</span>
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-500 transition-all duration-500"
+                              style={{ width: `${Math.min(100, (o.invoicedQuantity / o.quantity) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

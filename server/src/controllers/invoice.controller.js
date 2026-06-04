@@ -27,6 +27,13 @@ export const createInvoiceSchema = z.object({
   idempotencyKey: z.string().optional(),
 });
 
+export const createInvoiceFromOrderSchema = z.object({
+  order: z.string(),
+  quantity: z.number().positive('Quantity must be greater than 0'),
+  showRateOnInvoice: z.boolean().optional(),
+  idempotencyKey: z.string().optional(),
+});
+
 async function allocateInvoiceNumber() {
   const fy = currentFinancialYear();
   const last = await Invoice.findOne({ invoiceNumber: new RegExp(`^INV-${fy.slice(2, 4)}-`) })
@@ -103,6 +110,96 @@ export const createInvoice = asyncHandler(async (req, res) => {
   res.status(201).json({ invoice });
 });
 
+/**
+ * POST /api/v1/invoices/from-order
+ * Level-4 generates an invoice directly from an approved order (no dispatch required).
+ * Supports partial invoicing: pass `quantity` to invoice only part of the order.
+ */
+export const createInvoiceFromOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.body.order)
+    .populate('client')
+    .populate('site');
+  if (!order) throw ApiError.notFound('Order not found');
+
+  const allowedStatuses = [ORDER_STATUS.APPROVED, ORDER_STATUS.PARTIALLY_INVOICED];
+  if (!allowedStatuses.includes(order.status)) {
+    throw ApiError.badRequest(
+      `Invoice can only be generated for APPROVED or PARTIALLY_INVOICED orders. Current status: ${order.status}`,
+    );
+  }
+
+  // Idempotency check
+  if (req.body.idempotencyKey) {
+    const existing = await Invoice.findOne({ idempotencyKey: req.body.idempotencyKey });
+    if (existing) return res.status(200).json({ invoice: existing, deduped: true });
+  }
+
+  // Validate requested quantity against remaining
+  const alreadyInvoiced = order.invoicedQuantity || 0;
+  const remaining = order.quantity - alreadyInvoiced;
+  const invoiceQty = Number(req.body.quantity);
+
+  if (invoiceQty <= 0) {
+    throw ApiError.badRequest('Invoice quantity must be greater than 0');
+  }
+  if (invoiceQty > remaining + 0.001) { // small float tolerance
+    throw ApiError.badRequest(
+      `Cannot invoice ${invoiceQty} m³ — only ${remaining} m³ remaining on this order`,
+    );
+  }
+
+  // Try to resolve the grade ObjectId from the grade string stored on Order
+  const { ConcreteGrade } = await import('../models/ConcreteGrade.js');
+  let gradeDoc = null;
+  if (order.grade) {
+    gradeDoc = await ConcreteGrade.findOne({ gradeCode: order.grade.toUpperCase() }).lean();
+  }
+
+  const alloc = await allocateInvoiceNumber();
+  const rate = order.negotiatedRate || 0;
+  const amount = rate * invoiceQty;
+
+  // Build the invoice payload — only include `grade` ref when we have a matching doc
+  const invoicePayload = {
+    invoiceNumber: alloc.number,
+    order: order._id,
+    client: order.client._id,
+    gradeLabel: order.grade || '',
+    quantity: invoiceQty,
+    rate,
+    amount,
+    showRateOnInvoice: req.body.showRateOnInvoice ?? true,
+    generatedByLevel4: req.user.id,
+    generatedAt: new Date(),
+    idempotencyKey: req.body.idempotencyKey,
+    syncStatus: 'synced',
+  };
+  if (gradeDoc) invoicePayload.grade = gradeDoc._id;
+
+  const invoice = await Invoice.create(invoicePayload);
+
+  // Update order's invoiced quantity and status
+  const newInvoicedQty = alreadyInvoiced + invoiceQty;
+  order.invoicedQuantity = newInvoicedQty;
+
+  if (newInvoicedQty >= order.quantity - 0.001) {
+    // Fully invoiced
+    order.status = ORDER_STATUS.INVOICED;
+  } else {
+    // Still has remaining quantity
+    order.status = ORDER_STATUS.PARTIALLY_INVOICED;
+  }
+  await order.save();
+
+  await notifyLevels([1, 2], {
+    type: 'invoice_generated',
+    message: `Invoice ${invoice.invoiceNumber} generated for ${invoiceQty} m³ of order ${order.orderNumber} (${newInvoicedQty}/${order.quantity} m³ invoiced)`,
+    relatedEntity: { kind: 'Invoice', id: invoice._id },
+  });
+
+  res.status(201).json({ invoice });
+});
+
 export const listInvoices = asyncHandler(async (req, res) => {
   const { client, from, to } = req.query;
   const filter = {};
@@ -144,7 +241,10 @@ export const getInvoicePdf = asyncHandler(async (req, res) => {
       path: 'dispatch',
       populate: { path: 'site' }
     })
-    .populate('order')
+    .populate({
+      path: 'order',
+      populate: { path: 'site' }
+    })
     .populate('generatedByLevel4', 'name');
 
   if (!invoice) throw ApiError.notFound('Invoice not found');

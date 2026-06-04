@@ -33,24 +33,41 @@ export default function L2Payments() {
   const isLoading = pLoad || iLoad;
 
   const allRecords = useMemo(() => {
-    const recordedInvoiceIds = new Set(
-      paymentsList
-        .filter((p) => p.invoice)
-        .map((p) => p.invoice._id || p.invoice)
-    );
+    const invoicePaid = {};
+    const invoicePendingRecords = {};
 
-    const virtualPayments = invoicesList
-      .filter((inv) => !recordedInvoiceIds.has(inv._id))
-      .map((inv) => ({
-        _id: 'v_' + inv._id,
-        isVirtual: true,
-        createdAt: inv.generatedAt,
-        client: inv.client,
-        invoice: inv,
-        amount: inv.amount,
-        paymentReceived: false,
-        recordedByLevel2: null,
-      }));
+    for (const p of paymentsList) {
+      if (p.invoice) {
+        const invId = p.invoice._id || p.invoice;
+        if (p.paymentReceived) {
+          invoicePaid[invId] = (invoicePaid[invId] || 0) + (p.amount || 0);
+        } else {
+          invoicePendingRecords[invId] = (invoicePendingRecords[invId] || 0) + (p.amount || 0);
+        }
+      }
+    }
+
+    const virtualPayments = [];
+    for (const inv of invoicesList) {
+      const invId = inv._id;
+      const paid = invoicePaid[invId] || 0;
+      const pendingRecords = invoicePendingRecords[invId] || 0;
+      
+      const remaining = Math.max(0, (inv.amount || 0) - paid - pendingRecords);
+      
+      if (remaining > 0) {
+        virtualPayments.push({
+          _id: 'v_' + inv._id,
+          isVirtual: true,
+          createdAt: inv.generatedAt,
+          client: inv.client,
+          invoice: inv,
+          amount: remaining,
+          paymentReceived: false,
+          recordedByLevel2: null,
+        });
+      }
+    }
 
     const combined = [...paymentsList, ...virtualPayments];
     combined.sort((a, b) => new Date(b.createdAt || b.receivedAt || Date.now()) - new Date(a.createdAt || a.receivedAt || Date.now()));
