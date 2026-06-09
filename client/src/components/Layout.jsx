@@ -9,6 +9,7 @@ const NAV_BY_LEVEL = {
   1: [
     { to: '/l1', label: 'Dashboard', icon: 'grid' },
     { to: '/l1/clients', label: 'Clients', icon: 'users' },
+    { to: '/l1/grades', label: 'Grades', icon: 'layers' },
     { to: '/l1/payments', label: 'Payments', icon: 'coin' },
     { to: '/l1/reports', label: 'Reports', icon: 'chart' },
     { to: '/l1/users', label: 'Users', icon: 'user' },

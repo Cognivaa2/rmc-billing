@@ -15,6 +15,7 @@ import L1ClientDetail from './pages/level1/ClientDetail.jsx';
 import L1Payments from './pages/level1/Payments.jsx';
 import L1Reports from './pages/level1/Reports.jsx';
 import L1Users from './pages/level1/Users.jsx';
+import L1Grades from './pages/level1/Grades.jsx';
 
 import L2Dashboard from './pages/level2/Dashboard.jsx';
 import L2Clients from './pages/level2/Clients.jsx';
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/l1/payments" element={<L1Payments />} />
         <Route path="/l1/reports" element={<L1Reports />} />
         <Route path="/l1/users" element={<L1Users />} />
+        <Route path="/l1/grades" element={<L1Grades />} />
       </Route>
 
       <Route element={<RequireAuth levels={[2]}><Layout /></RequireAuth>}>
