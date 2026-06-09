@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -113,6 +114,24 @@ async function start() {
 
   httpServer.listen(env.port, () => {
     logger.info(`RMC Billing API listening on :${env.port}`);
+
+    // Self-ping to prevent Render from sleeping (triggers every 14 minutes)
+    const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL;
+    if (RENDER_EXTERNAL_URL) {
+      setInterval(() => {
+        https.get(`${RENDER_EXTERNAL_URL}/health`, (resp) => {
+          if (resp.statusCode === 200) {
+            logger.info('Keep-alive ping successful');
+          } else {
+            logger.warn(`Keep-alive ping failed with status: ${resp.statusCode}`);
+          }
+        }).on("error", (err) => {
+          logger.error(`Keep-alive error: ${err.message}`);
+        });
+      }, 1 * 60 * 1000); // 14 minutes in milliseconds
+
+      logger.info(`Keep-alive self-ping initialized for ${RENDER_EXTERNAL_URL}`);
+    }
   });
 }
 
