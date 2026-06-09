@@ -41,7 +41,8 @@ app.use(cors({
     if (
       env.clientOrigin === '*' ||
       allowedOrigins.includes(origin.replace(/\/$/, '')) ||
-      env.nodeEnv !== 'production'
+      env.nodeEnv !== 'production' ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
     ) {
       cb(null, true);
     } else {
