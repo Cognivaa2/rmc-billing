@@ -27,7 +27,6 @@ const NAV_BY_LEVEL = {
   4: [
     { to: '/l4', label: 'Dashboard', icon: 'grid' },
     { to: '/l4/approved-orders', label: 'Approved Orders', icon: 'star' },
-    { to: '/l4/dispatches', label: 'Dispatches', icon: 'truck' },
     { to: '/l4/invoices', label: 'Invoices', icon: 'receipt' },
   ],
 };

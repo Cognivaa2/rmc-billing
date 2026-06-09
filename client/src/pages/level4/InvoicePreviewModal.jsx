@@ -3,9 +3,28 @@ import React from 'react';
 export default function InvoicePreviewModal({ invoice, dispatch, client, grade, settings, onClose }) {
   if (!invoice) return null;
 
+  const getInitials = (name) => {
+    if (!name) return '';
+    return name
+      .trim()
+      .split(/\s+/)
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  const l2User = invoice?.order?.saleAuthorizedByLevel2 ||
+    invoice?.order?.approvedByLevel2 ||
+    dispatch?.order?.saleAuthorizedByLevel2 ||
+    dispatch?.order?.approvedByLevel2;
+  const dispatchApprovedBy = l2User?.name ? getInitials(l2User.name) : '';
+  const challanGeneratedBy = invoice?.generatedByLevel4?.name
+    ? getInitials(invoice.generatedByLevel4.name)
+    : (dispatch?.filledByLevel4?.name ? getInitials(dispatch.filledByLevel4.name) : '');
+
   const showRate = invoice.showRateOnInvoice !== false;
   const invoiceDate = new Date(invoice.generatedAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
-  
+
   const quantity = invoice.quantity ?? 0;
   const rate = invoice.rate ?? 0;
   const amount = invoice.amount ?? rate * quantity;
@@ -26,13 +45,13 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 sm:p-8 backdrop-blur-sm print:p-0 print:bg-white">
       <div className="relative flex h-full max-h-[95vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-2xl print:h-auto print:max-h-none print:shadow-none">
-        
+
         {/* Header - hidden when printing */}
         <div className="flex items-center justify-between border-b border-slate-100 p-4 print:hidden">
           <h3 className="font-semibold text-lg text-slate-800">Tax Invoice Preview</h3>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => window.print()} 
+            <button
+              onClick={() => window.print()}
               className="btn-primary text-sm px-4 py-2"
             >
               Print / Save PDF
@@ -49,7 +68,7 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 print:p-0 print:overflow-visible bg-slate-50 print:bg-white">
           <div className="mx-auto w-full max-w-[900px] border border-black bg-white text-black text-[11px] leading-tight print:max-w-none" id="printable-invoice">
-            
+
             {/* Header Block */}
             <div className="flex border-b border-black">
               <div className="w-1/4 p-4 border-r border-black flex items-center justify-center font-bold text-lg">LOGO</div>
@@ -130,17 +149,15 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
                 <div className="border-b border-r border-black p-2 h-24 space-y-1">
                   <div className="font-bold text-[9px] uppercase">Consignee (Ship-To)</div>
                   <div className="font-bold text-xs uppercase">{client?.clientName}</div>
-                  <div>Site: {dispatch?.site?.siteName}</div>
-                  <div className="text-[10px]">{dispatch?.site?.address}</div>
-                  <div className="font-bold pt-1">GSTIN/ UIN : {client?.gstin}</div>
+                  <div>Site: {dispatch?.site?.siteName || invoice?.dispatch?.site?.siteName || invoice?.order?.site?.siteName || ''}</div>
+                  <div className="text-[10px]">Site Address: {dispatch?.site?.siteAddress || invoice?.dispatch?.site?.siteAddress || invoice?.order?.site?.siteAddress || dispatch?.site?.address || invoice?.dispatch?.site?.address || invoice?.order?.site?.address || ''}</div>
                 </div>
                 <div className="border-r border-black p-2 h-32 space-y-1">
                   <div className="font-bold text-[9px] uppercase">Buyer (Bill-To)</div>
                   <div className="font-bold text-xs uppercase">{client?.clientName}</div>
                   <div className="text-[10px]">{client?.officeAddress}</div>
                   <div>Phone: {client?.phone}</div>
-                  <div className="font-bold pt-1">GSTIN/ UIN : {client?.gstin}</div>
-                  <div className="font-bold pt-1">Place of Supply : West Bengal</div>
+                  <div className="font-bold pt-1">GSTIN : {client?.gstin}</div>
                 </div>
               </div>
               <div className="w-5/12 flex flex-col">
@@ -265,7 +282,6 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
                   <div className="text-slate-200 text-3xl font-bold opacity-20">STAMP AREA</div>
                 </div>
                 <div className="text-right space-y-1">
-                  <div className="font-bold uppercase">for {companyName}</div>
                   <div className="pt-8 font-bold">(Authorized Signatory)</div>
                 </div>
               </div>
@@ -276,8 +292,8 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
               <div className="border-r border-black p-2 flex flex-col justify-between">
                 <div className="font-bold">Dispatch Details</div>
                 <div className="space-y-1">
-                  <div>Dispatch approved by: ________________</div>
-                  <div>Challan generated by: ________________</div>
+                  <div>Dispatch approved by: {dispatchApprovedBy || '________________'}</div>
+                  <div>Challan generated by: {challanGeneratedBy || '________________'}</div>
                 </div>
               </div>
               <div className="border-r border-black p-2"></div>
@@ -291,13 +307,13 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
               </div>
             </div>
           </div>
-          
+
           <div className="mt-4 text-center text-[10px] text-slate-500 italic print:mt-2">
             This is a computer generated document and does not require a signature
           </div>
         </div>
       </div>
-      
+
       <style>{`
         @media print {
           body * {

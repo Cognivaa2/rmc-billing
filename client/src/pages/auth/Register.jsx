@@ -79,9 +79,16 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full justify-center"
+            className="w-full btn-primary py-3 px-6 font-bold text-sm rounded-xl active:scale-[0.98] transition-all shadow-md shadow-brand-600/20 flex items-center justify-center gap-2"
           >
-            {loading ? 'Creating...' : 'Register as Admin'}
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Register as Admin'
+            )}
           </button>
 
           <div className="text-center text-sm text-slate-400 mt-4">

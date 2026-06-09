@@ -103,10 +103,17 @@ export default function Login() {
           )}
 
           <button
-            className="btn-primary w-full"
+            className="w-full btn-primary py-3 px-6 font-bold text-sm rounded-xl active:scale-[0.98] transition-all shadow-md shadow-brand-600/20 flex items-center justify-center gap-2"
             disabled={submitting || formState.isSubmitting}
           >
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Signing in…
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
         </form>
 

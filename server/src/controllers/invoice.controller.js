@@ -31,6 +31,7 @@ export const createInvoiceFromOrderSchema = z.object({
   order: z.string(),
   quantity: z.number().positive('Quantity must be greater than 0'),
   showRateOnInvoice: z.boolean().optional(),
+  vehicleNumber: z.string().optional(),
   idempotencyKey: z.string().optional(),
 });
 
@@ -169,6 +170,7 @@ export const createInvoiceFromOrder = asyncHandler(async (req, res) => {
     rate,
     amount,
     showRateOnInvoice: req.body.showRateOnInvoice ?? true,
+    vehicleNumber: req.body.vehicleNumber,
     generatedByLevel4: req.user.id,
     generatedAt: new Date(),
     idempotencyKey: req.body.idempotencyKey,
@@ -213,7 +215,13 @@ export const listInvoices = asyncHandler(async (req, res) => {
     .populate('client', 'clientName')
     .populate('grade', 'gradeCode')
     .populate('dispatch', 'dispatchNumber vehicleNumber')
-    .populate('order', 'orderNumber')
+    .populate({
+      path: 'order',
+      populate: [
+        { path: 'approvedByLevel2', select: 'name' },
+        { path: 'saleAuthorizedByLevel2', select: 'name' }
+      ]
+    })
     .populate('generatedByLevel4', 'name')
     .sort({ generatedAt: -1 });
   res.json({ invoices });
@@ -227,7 +235,13 @@ export const getInvoice = asyncHandler(async (req, res) => {
       path: 'dispatch',
       populate: { path: 'site' }
     })
-    .populate('order')
+    .populate({
+      path: 'order',
+      populate: [
+        { path: 'approvedByLevel2', select: 'name' },
+        { path: 'saleAuthorizedByLevel2', select: 'name' }
+      ]
+    })
     .populate('generatedByLevel4', 'name');
   if (!invoice) throw ApiError.notFound();
   res.json({ invoice });
@@ -243,7 +257,11 @@ export const getInvoicePdf = asyncHandler(async (req, res) => {
     })
     .populate({
       path: 'order',
-      populate: { path: 'site' }
+      populate: [
+        { path: 'site' },
+        { path: 'approvedByLevel2', select: 'name' },
+        { path: 'saleAuthorizedByLevel2', select: 'name' }
+      ]
     })
     .populate('generatedByLevel4', 'name');
 

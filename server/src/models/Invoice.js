@@ -12,6 +12,7 @@ const invoiceSchema = new mongoose.Schema(
     rate: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },
     showRateOnInvoice: { type: Boolean, default: true },
+    vehicleNumber: { type: String },
     generatedByLevel4: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     generatedAt: { type: Date, default: Date.now },
     pdfUrl: String,

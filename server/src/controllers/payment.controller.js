@@ -11,7 +11,7 @@ export const paymentSchema = z.object({
   order: z.string().optional(),
   amount: z.number().nonnegative(),
   paymentReceived: z.boolean().optional(),
-  receivedAt: z.string().optional(),
+  receivedAt: z.string({ required_error: 'Date Received is required' }),
   remarks: z.string().optional(),
 });
 

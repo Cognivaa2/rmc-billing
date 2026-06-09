@@ -267,8 +267,8 @@ export default function L2Payments() {
             </select>
           </div>
           <div>
-            <label className="label">Date Received</label>
-            <input type="datetime-local" className="input" {...register('receivedAt')} />
+            <label className="label">Date Received *</label>
+            <input type="datetime-local" className="input" required {...register('receivedAt')} />
           </div>
           <div className="md:col-span-1">
             <label className="label">Remarks</label>

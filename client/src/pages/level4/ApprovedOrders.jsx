@@ -15,14 +15,40 @@ function InvoiceForm({ order, onDone, onError }) {
   const remaining = order.quantity - (order.invoicedQuantity || 0);
   const [qty, setQty] = useState(remaining);
   const [showRate, setShowRate] = useState(true);
+  const [vehicleNumber, setVehicleNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const qc = useQueryClient();
 
+  const vehicleNumberRegex = /^[A-Za-z]{2}[0-9]{2}[A-Za-z]{1,2}[0-9]{4}$/;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!qty) {
+      onError('Invoice Quantity is required');
+      return;
+    }
+
     const parsed = parseFloat(qty);
-    if (!parsed || parsed <= 0) { onError('Enter a valid quantity greater than 0'); return; }
-    if (parsed > remaining + 0.001) { onError(`Max ${remaining} m³ remaining`); return; }
+    if (isNaN(parsed) || parsed <= 0) {
+      onError('Enter a valid quantity greater than 0');
+      return;
+    }
+    if (parsed > remaining + 0.001) {
+      onError(`Max ${remaining} m³ remaining`);
+      return;
+    }
+
+    const cleanVehicle = vehicleNumber.trim().toUpperCase();
+    if (!cleanVehicle) {
+      onError('Vehicle Number is required');
+      return;
+    }
+
+    if (!vehicleNumberRegex.test(cleanVehicle)) {
+      onError('Invalid Vehicle Number. Format: AA11BB1234');
+      return;
+    }
 
     setLoading(true);
     onError(null);
@@ -31,6 +57,7 @@ function InvoiceForm({ order, onDone, onError }) {
         order: order._id,
         quantity: parsed,
         showRateOnInvoice: showRate,
+        vehicleNumber: cleanVehicle,
         idempotencyKey: newIdempotencyKey(),
       });
 
@@ -74,6 +101,7 @@ function InvoiceForm({ order, onDone, onError }) {
             onChange={(e) => setQty(e.target.value)}
             className="input w-full pr-16 py-2.5 font-mono text-base font-bold focus:border-brand-500 focus:ring-brand-500 bg-white"
             placeholder={`Max ${remaining}`}
+            required
           />
           <button
             type="button"
@@ -92,8 +120,26 @@ function InvoiceForm({ order, onDone, onError }) {
         </div>
       </div>
 
+      {/* Vehicle Number Input */}
+      <div className="md:col-span-4">
+        <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+          Vehicle Number
+        </label>
+        <input
+          type="text"
+          value={vehicleNumber}
+          onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+          className="input w-full py-2.5 font-mono text-base font-bold focus:border-brand-500 focus:ring-brand-500 bg-white"
+          placeholder="AA11BB1234"
+          required
+        />
+        <div className="h-4 mt-2">
+          <p className="text-[10px] text-slate-400 font-medium uppercase">Format: AA11BB1234</p>
+        </div>
+      </div>
+
       {/* Show rate toggle */}
-      <div className="md:col-span-3 flex flex-col">
+      <div className="md:col-span-4 flex flex-col">
         <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
           Amount on Invoice
         </label>
@@ -116,19 +162,19 @@ function InvoiceForm({ order, onDone, onError }) {
       </div>
 
       {/* Actions */}
-      <div className="md:col-span-5 flex gap-3 mt-4 md:mt-[1.65rem]">
+      <div className="md:col-span-12 flex flex-col-reverse md:flex-row gap-3 mt-6 justify-end">
         <button
           type="button"
           onClick={onDone}
           disabled={loading}
-          className="flex-1 md:flex-none md:w-auto btn py-2.5 px-5 font-bold text-sm rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition-all"
+          className="w-full md:w-auto btn py-2.5 px-5 font-bold text-sm rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition-all"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="flex-[2] md:flex-1 btn py-2.5 px-6 font-bold text-sm rounded-xl bg-brand-600 hover:bg-brand-700 text-white border border-brand-700 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full md:w-auto btn py-2.5 px-6 font-bold text-sm rounded-xl bg-brand-600 hover:bg-brand-700 text-white border border-brand-700 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -227,10 +273,10 @@ export default function L4ApprovedOrders() {
             <div
               key={o._id}
               className={`card overflow-hidden transition-all duration-300 border-l-4 ${isOpen
-                  ? 'border-l-brand-600 shadow-lg ring-1 ring-brand-100'
-                  : isPartial
-                    ? 'border-l-amber-400 hover:border-l-amber-500 hover:shadow-md'
-                    : 'border-l-slate-300 hover:border-l-brand-400 hover:shadow-md'
+                ? 'border-l-brand-600 shadow-lg ring-1 ring-brand-100'
+                : isPartial
+                  ? 'border-l-amber-400 hover:border-l-amber-500 hover:shadow-md'
+                  : 'border-l-slate-300 hover:border-l-brand-400 hover:shadow-md'
                 }`}
             >
               <div className="p-5 md:p-6">
@@ -311,8 +357,8 @@ export default function L4ApprovedOrders() {
                     <button
                       onClick={() => { setOpenFor(isOpen ? null : o._id); setError(null); }}
                       className={`w-full lg:w-auto btn px-6 py-2.5 font-bold text-sm rounded-xl shadow-sm transition-all active:scale-[0.98] whitespace-nowrap ${isOpen
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                          : 'bg-brand-600 hover:bg-brand-700 text-white border border-brand-700'
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                        : 'bg-brand-600 hover:bg-brand-700 text-white border border-brand-700'
                         }`}
                     >
                       {isOpen ? '✕ Close' : '🧾 Invoice'}
