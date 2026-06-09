@@ -266,7 +266,6 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
                 <div>
                   <div className="font-bold underline text-[9px]">Declaration:</div>
                   <div className="text-[10px] mt-1 italic">We declare that this invoice show the actual price of the goods described and that all particulars are true and correct.</div>
-                  <div className="mt-2"><span className="font-bold">Company's PAN :</span> {settings?.pan || ''}</div>
                 </div>
                 <div>
                   <div className="font-bold underline text-[9px]">Terms & Conditions:</div>

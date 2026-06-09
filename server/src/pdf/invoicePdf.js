@@ -279,7 +279,6 @@ export function renderInvoicePdf(stream, { invoice, company }) {
   doc.rect(LEFT, y, W, declH).stroke();
   doc.font('Helvetica-Bold').fontSize(7.5).text('Declaration:', LEFT + 5, y + 4);
   doc.font('Helvetica').fontSize(7).text('We declare that this invoice show the actual price of the goods described and that all particulars are true and correct.', LEFT + 5, y + 12, { width: W * 0.7 });
-  doc.text(`Company's PAN : ${company.pan || ''}`, LEFT + 5, y + 30);
 
   const tcY = y + 42;
   doc.font('Helvetica-Bold').fontSize(7.5).text('Terms & Conditions:', LEFT + 5, tcY);
