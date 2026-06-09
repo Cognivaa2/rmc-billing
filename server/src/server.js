@@ -128,7 +128,7 @@ async function start() {
         }).on("error", (err) => {
           logger.error(`Keep-alive error: ${err.message}`);
         });
-      }, 1 * 60 * 1000); // 14 minutes in milliseconds
+      }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
       logger.info(`Keep-alive self-ping initialized for ${RENDER_EXTERNAL_URL}`);
     }
