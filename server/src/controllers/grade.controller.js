@@ -24,3 +24,9 @@ export const updateGrade = asyncHandler(async (req, res) => {
   if (!grade) throw ApiError.notFound();
   res.json({ grade });
 });
+
+export const deleteGrade = asyncHandler(async (req, res) => {
+  const grade = await ConcreteGrade.findByIdAndDelete(req.params.id);
+  if (!grade) throw ApiError.notFound();
+  res.json({ success: true, message: 'Concrete grade deleted successfully' });
+});

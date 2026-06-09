@@ -58,7 +58,7 @@ async function run() {
     {
       clientName: 'Acme Constructions Pvt Ltd',
       officeAddress: 'Plot 14, Sector 21, Gurugram',
-      contactNumber: '+91-9000000001',
+      contactNumber: '9000000001',
       email: 'ops@acme.test',
       taxInformation: { gstin: '06ABCDE1234F1Z5', pan: 'ABCDE1234F' },
       kycStatus: 'verified',
@@ -68,7 +68,7 @@ async function run() {
     {
       clientName: 'Everest Infra LLP',
       officeAddress: '11/B Trinity Towers, Pune',
-      contactNumber: '+91-9000000002',
+      contactNumber: '9000000002',
       email: 'procurement@everestinfra.test',
       taxInformation: { gstin: '27PQRST9876K1Z9', pan: 'PQRST9876K' },
       kycStatus: 'submitted',

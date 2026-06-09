@@ -103,9 +103,8 @@ export function NotificationBell() {
             {items.map((n) => (
               <button
                 key={n._id}
-                className={`w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                  n.isRead ? 'opacity-60' : ''
-                }`}
+                className={`w-full border-b border-slate-50 px-4 py-3 text-left hover:bg-slate-50 transition-colors ${n.isRead ? 'opacity-60' : ''
+                  }`}
                 onClick={() => handleSelect(n)}
               >
                 <div className="text-sm font-medium text-slate-800">{n.message}</div>
@@ -123,23 +122,23 @@ export function NotificationBell() {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Notification Detail</h3>
-              <button 
+              <button
                 onClick={() => setSelected(null)}
                 className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                 aria-label="Close modal"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Message</div>
                 <div className="text-base text-slate-800 bg-slate-50 p-4 rounded-xl border border-slate-100">{selected.message}</div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Type</div>
@@ -155,7 +154,7 @@ export function NotificationBell() {
             </div>
 
             <div className="mt-8 flex justify-end">
-              <button 
+              <button
                 onClick={() => setSelected(null)}
                 className="btn-primary w-full sm:w-auto"
               >

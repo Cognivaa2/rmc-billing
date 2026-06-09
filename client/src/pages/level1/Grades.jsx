@@ -38,6 +38,19 @@ export default function L1Grades() {
     },
   });
 
+  const remove = useMutation({
+    mutationFn: (id) => grades.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['grades'] });
+    },
+  });
+
+  const handleDelete = (g) => {
+    if (window.confirm(`Are you sure you want to delete concrete grade ${g.gradeCode}?`)) {
+      remove.mutate(g._id);
+    }
+  };
+
   const openEdit = (g) => {
     setEditingGrade(g);
     setShowNew(true);
@@ -166,12 +179,19 @@ export default function L1Grades() {
                   <td className="text-slate-500">{idx + 1}</td>
                   <td className="font-semibold text-slate-800">{g.gradeCode}</td>
                   <td className="text-slate-500">{g.description || '—'}</td>
-                  <td className="text-right">
+                  <td className="text-right space-x-3">
                     <button
                       className="text-xs text-brand-600 hover:underline font-medium"
                       onClick={() => openEdit(g)}
                     >
                       Edit
+                    </button>
+                    <button
+                      className="text-xs text-rose-600 hover:underline font-medium"
+                      onClick={() => handleDelete(g)}
+                      disabled={remove.isPending}
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>

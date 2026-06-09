@@ -40,6 +40,7 @@ export const grades = {
   list: () => api.get('/grades').then((r) => r.data.grades),
   create: (data) => api.post('/grades', data).then((r) => r.data.grade),
   update: (id, data) => api.patch(`/grades/${id}`, data).then((r) => r.data.grade),
+  delete: (id) => api.delete(`/grades/${id}`).then((r) => r.data),
 };
 
 export const orders = {
