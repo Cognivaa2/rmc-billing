@@ -137,8 +137,8 @@ export default function L1Grades() {
               {create.isPending || update.isPending
                 ? 'Saving…'
                 : editingGrade
-                ? 'Update Grade'
-                : 'Add Grade'}
+                  ? 'Update Grade'
+                  : 'Add Grade'}
             </button>
           </div>
           {(create.isError || update.isError) && (
