@@ -47,8 +47,29 @@ export const createUser = asyncHandler(async (req, res) => {
   const { name, email, password, level, phone } = req.body;
   const exists = await User.findOne({ email: email.toLowerCase() });
   if (exists) throw ApiError.conflict('Email already registered');
+  
+  const getInitials = (n) => {
+    const parts = n.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return n.slice(0, 2).toUpperCase();
+  };
+  const initials = getInitials(name);
+  
+  const lastUser = await User.findOne({ customId: new RegExp(`^${initials}\\d{3}$`) })
+    .sort({ customId: -1 })
+    .collation({ locale: "en_US", numericOrdering: true });
+    
+  let nextNum = 1;
+  if (lastUser && lastUser.customId) {
+    const match = lastUser.customId.match(/\d+/);
+    if (match) nextNum = parseInt(match[0], 10) + 1;
+  }
+  const customId = `${initials}${String(nextNum).padStart(3, '0')}`;
+
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await User.create({ name, email: email.toLowerCase(), passwordHash, level, phone });
+  const user = await User.create({ customId, name, email: email.toLowerCase(), passwordHash, level, phone });
   res.status(201).json({ user: user.toPublic() });
 });
 
@@ -67,4 +88,10 @@ export const getUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw ApiError.notFound();
   res.json({ user: user.toPublic() });
+});
+
+export const deleteUser = asyncHandler(async (req, res) => {
+  const user = await User.findByIdAndDelete(req.params.id);
+  if (!user) throw ApiError.notFound('User not found');
+  res.json({ success: true, message: 'User deleted successfully' });
 });

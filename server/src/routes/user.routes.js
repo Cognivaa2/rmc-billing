@@ -8,6 +8,7 @@ import {
   getUser,
   createUserSchema,
   updateUserSchema,
+  deleteUser,
 } from '../controllers/user.controller.js';
 
 const router = Router();
@@ -17,5 +18,6 @@ router.get('/', listUsers);
 router.post('/', validate(createUserSchema), createUser);
 router.get('/:id', getUser);
 router.patch('/:id', validate(updateUserSchema), updateUser);
+router.delete('/:id', deleteUser);
 
 export default router;

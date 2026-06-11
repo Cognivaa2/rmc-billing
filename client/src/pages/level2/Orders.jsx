@@ -110,16 +110,16 @@ function ClientPaymentHistoryModal({ order, onClose, onConfirmApprove, isApprovi
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4 flex-shrink-0">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-2xl">📊</span>
               <div>
                 <h2 className="text-lg font-bold text-white">Payment History</h2>
-                <p className="text-xs text-emerald-200">{clientName} · Before approving {order.orderNumber}</p>
+                <p className="text-xs text-brand-200">{clientName} · Before approving {order.orderNumber}</p>
               </div>
             </div>
-            <button onClick={onClose} className="text-emerald-200 hover:text-white text-xl leading-none">×</button>
+            <button onClick={onClose} className="text-brand-200 hover:text-white text-xl leading-none">×</button>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ function ClientPaymentHistoryModal({ order, onClose, onConfirmApprove, isApprovi
             <button
               onClick={onConfirmApprove}
               disabled={isApproving}
-              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition disabled:opacity-60 flex items-center gap-2"
+              className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700 transition disabled:opacity-60 flex items-center gap-2"
             >
               {isApproving ? (
                 <><svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Approving…</>
@@ -305,12 +305,12 @@ function AuthorizeSaleModal({ order, onClose, onConfirm, isPending }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-6 py-4 flex-shrink-0">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-700 px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-2xl">✅</span>
             <div>
               <h2 className="text-lg font-semibold text-white">Authorize Sale</h2>
-              <p className="text-xs text-violet-200">{order.orderNumber} · {order.client?.clientName}</p>
+              <p className="text-xs text-brand-200">{order.orderNumber} · {order.client?.clientName}</p>
             </div>
           </div>
         </div>
@@ -330,12 +330,12 @@ function AuthorizeSaleModal({ order, onClose, onConfirm, isPending }) {
               {dispatchesData.map((d) => (
                 <div
                   key={d._id}
-                  className={`rounded-xl border p-4 cursor-pointer transition-all ${selectedDispatches.has(d._id) ? 'bg-violet-50 border-violet-200 shadow-sm' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
+                  className={`rounded-xl border p-4 cursor-pointer transition-all ${selectedDispatches.has(d._id) ? 'bg-brand-50 border-brand-200 shadow-sm' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
                   onClick={() => toggleSelection(d._id)}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-slate-800">{d.dispatchNumber}</div>
-                    <div className={`h-5 w-5 rounded border flex items-center justify-center ${selectedDispatches.has(d._id) ? 'bg-violet-600 border-violet-600' : 'bg-white border-slate-300'}`}>
+                    <div className={`h-5 w-5 rounded border flex items-center justify-center ${selectedDispatches.has(d._id) ? 'bg-brand-600 border-brand-600' : 'bg-white border-slate-300'}`}>
                       {selectedDispatches.has(d._id) && (
                         <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                       )}
@@ -375,7 +375,7 @@ function AuthorizeSaleModal({ order, onClose, onConfirm, isPending }) {
             Cancel
           </button>
           <button
-            className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-700 transition disabled:opacity-60 flex items-center gap-2"
+            className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 transition disabled:opacity-60 flex items-center gap-2"
             onClick={handleConfirm}
             disabled={isPending || dispatchesData.length === 0 || selectedDispatches.size === 0}
           >
@@ -534,7 +534,7 @@ export default function L2Orders() {
               {o.status === 'PENDING' && (
                 <>
                   <button
-                    className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm"
+                    className="flex-1 rounded-lg bg-brand-600 py-2 text-xs font-bold text-white hover:bg-brand-700 transition shadow-sm"
                     onClick={() => setPaymentHistoryTarget(o)}
                     disabled={approve.isPending}
                   >
@@ -555,7 +555,7 @@ export default function L2Orders() {
               )}
               {o.status === 'DISPATCHED' && (
                 <button
-                  className="w-full rounded-lg bg-violet-600 py-2.5 text-xs font-bold text-white hover:bg-violet-700 transition shadow-sm flex items-center justify-center gap-2"
+                  className="w-full rounded-lg bg-brand-600 py-2.5 text-xs font-bold text-white hover:bg-brand-700 transition shadow-sm flex items-center justify-center gap-2"
                   onClick={() => setAuthTarget(o)}
                 >
                   ✅ Authorize Sale
@@ -645,7 +645,7 @@ export default function L2Orders() {
                     {o.status === 'PENDING' && (
                       <>
                         <button
-                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
+                          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 transition-all shadow-sm active:scale-95"
                           onClick={() => setPaymentHistoryTarget(o)}
                           disabled={approve.isPending}
                         >
@@ -666,7 +666,7 @@ export default function L2Orders() {
                     )}
                     {o.status === 'DISPATCHED' && (
                       <button
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition-all shadow-sm active:scale-95"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 transition-all shadow-sm active:scale-95"
                         onClick={() => setAuthTarget(o)}
                       >
                         ✅ Authorize Sale

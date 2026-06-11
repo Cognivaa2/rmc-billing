@@ -7,7 +7,7 @@ const REPORTS = [
     id: 'clients',
     title: 'Client Database',
     description: 'Master list of all clients with contact details, tax information, and KYC status.',
-    fields: ['Client', 'L3 Manager', 'Address', 'KYC', 'GSTIN/PAN', 'Contact', 'Email'],
+    fields: ['Client', 'Address', 'KYC', 'GSTIN', 'PAN', 'Contact', 'Email'],
     dateable: false,
     color: 'indigo'
   },

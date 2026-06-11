@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema(
   {
+    customId: { type: String, unique: true, sparse: true, index: true },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     passwordHash: { type: String, required: true },
@@ -16,6 +17,7 @@ const userSchema = new mongoose.Schema(
 userSchema.methods.toPublic = function toPublic() {
   return {
     id: this._id,
+    customId: this.customId,
     name: this.name,
     email: this.email,
     level: this.level,

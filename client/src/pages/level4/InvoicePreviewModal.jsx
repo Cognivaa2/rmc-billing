@@ -17,10 +17,10 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
     invoice?.order?.approvedByLevel2 ||
     dispatch?.order?.saleAuthorizedByLevel2 ||
     dispatch?.order?.approvedByLevel2;
-  const dispatchApprovedBy = l2User?.name ? getInitials(l2User.name) : '';
-  const challanGeneratedBy = invoice?.generatedByLevel4?.name
-    ? getInitials(invoice.generatedByLevel4.name)
-    : (dispatch?.filledByLevel4?.name ? getInitials(dispatch.filledByLevel4.name) : '');
+  const dispatchApprovedBy = l2User?.customId || (l2User?.name ? getInitials(l2User.name) : '');
+  
+  const l4User = invoice?.generatedByLevel4 || dispatch?.filledByLevel4;
+  const challanGeneratedBy = l4User?.customId || (l4User?.name ? getInitials(l4User.name) : '');
 
   const showRate = invoice.showRateOnInvoice !== false;
   const invoiceDate = new Date(invoice.generatedAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
@@ -195,7 +195,17 @@ export default function InvoicePreviewModal({ invoice, dispatch, client, grade, 
                 <tbody className="h-24">
                   <tr className="border-b border-black align-top text-center h-24">
                     <td className="border-r border-black p-1">1</td>
-                    <td className="border-r border-black p-1 text-left font-medium">{grade?.gradeCode}</td>
+                    <td className="border-r border-black p-1 text-left">
+                      <div className="font-bold text-[11px]">{grade?.gradeCode || invoice?.gradeLabel || 'Ready Mix Concrete'}</div>
+                      {grade?.description && (
+                        <>
+                          <div className="my-1 border-t border-slate-300 w-full" />
+                          <div className="text-[9px] text-slate-700 font-normal whitespace-pre-wrap">
+                            {grade.description}
+                          </div>
+                        </>
+                      )}
+                    </td>
                     <td className="border-r border-black p-1">{grade?.hsnCode || '38245010'}</td>
                     <td className="border-r border-black p-1">M³</td>
                     <td className="border-r border-black p-1">{quantity.toFixed(2)}</td>

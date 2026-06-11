@@ -4,6 +4,7 @@ import { DispatchForm } from '../models/DispatchForm.js';
 import { Client } from '../models/Client.js';
 import { Order } from '../models/Order.js';
 import { Payment } from '../models/Payment.js';
+import { Invoice } from '../models/Invoice.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 function parseRange(req) {
@@ -132,7 +133,6 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
   const clients = await Client.find().populate('createdByLevel3', 'name').sort({ clientName: 1 }).lean();
   const rowsObj = clients.map((c) => ({
     client: c.clientName,
-    level3: c.createdByLevel3?.name || '',
     address: c.officeAddress,
     kyc: c.kycStatus,
     kycDocsCount: c.kycData?.documents?.length || 0,
@@ -150,7 +150,6 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
       filename: 'client-database',
       columns: [
         { header: 'Client Name', key: 'client', width: 26 },
-        { header: 'Level 3 Name', key: 'level3', width: 20 },
         { header: 'Office Address', key: 'address', width: 36 },
         { header: 'KYC Status', key: 'kyc', width: 12 },
         { header: 'KYC Docs', key: 'kycDocsCount', width: 10 },
@@ -172,8 +171,8 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
 
     const toTitleCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 
-    const headers = ['CLIENT NAME', 'LEVEL 3 NAME', 'OFFICE ADDRESS', 'KYC DATA', 'TAX INFO', 'CONTACT', 'EMAIL'];
-    const colWidths = [85, 65, 110, 55, 75, 60, 65];
+    const headers = ['CLIENT NAME', 'OFFICE ADDRESS', 'KYC DATA', 'GSTIN', 'PAN', 'CONTACT', 'EMAIL'];
+    const colWidths = [85, 110, 55, 65, 65, 60, 75];
     const startX = 40;
     const tableWidth = 515;
 
@@ -209,13 +208,11 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
 
     doc.fontSize(7.5).fillColor('#334155');
     for (const r of rowsObj) {
-      const taxText = r.gstin ? `GSTIN:\n${r.gstin}` : (r.pan ? `PAN:\n${r.pan}` : '-');
-
-      // Calculate max height
       const h1 = doc.heightOfString(r.client, { width: colWidths[0] - 5, font: 'Helvetica-Bold' });
-      const h2 = doc.heightOfString(r.address, { width: colWidths[2] - 5 });
-      const h3 = doc.heightOfString(taxText, { width: colWidths[4] - 5 });
-      const maxRowHeight = Math.max(h1, h2, h3, 20);
+      const h2 = doc.heightOfString(r.address, { width: colWidths[1] - 5 });
+      const h3 = doc.heightOfString(r.gstin || '-', { width: colWidths[3] - 5 });
+      const h4 = doc.heightOfString(r.pan || '-', { width: colWidths[4] - 5 });
+      const maxRowHeight = Math.max(h1, h2, h3, h4, 20);
 
       if (y + maxRowHeight > doc.page.height - 70) {
         drawFooter();
@@ -229,11 +226,8 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
       // Client Name (Bold)
       doc.font('Helvetica-Bold').text(r.client, curX + 3, y, { width: colWidths[0] - 5 }); curX += colWidths[0];
 
-      // L3 Name
-      doc.font('Helvetica').text(r.level3, curX + 3, y, { width: colWidths[1] - 5 }); curX += colWidths[1];
-
       // Address
-      doc.text(r.address, curX + 3, y, { width: colWidths[2] - 5 }); curX += colWidths[2];
+      doc.font('Helvetica').text(r.address, curX + 3, y, { width: colWidths[1] - 5 }); curX += colWidths[1];
 
       // KYC Badge
       const kycStatus = r.kyc?.toLowerCase() || 'pending';
@@ -245,11 +239,14 @@ export const clientDatabaseReport = asyncHandler(async (req, res) => {
       doc.roundedRect(curX + 5, y, 40, 10, 2).fill(badgeBg);
       doc.fillColor(badgeColor).fontSize(6.5).font('Helvetica-Bold').text(toTitleCase(kycStatus), curX + 5, y + 2, { width: 40, align: 'center' });
       doc.restore();
+      curX += colWidths[2];
+
+      // GSTIN
+      doc.fillColor('#334155').font('Helvetica').text(r.gstin || '-', curX + 3, y, { width: colWidths[3] - 5 });
       curX += colWidths[3];
 
-      // Tax Info
-      doc.fontSize(7.5).font('Helvetica').fillColor('#64748b').text('GSTIN:', curX + 3, y);
-      doc.fillColor('#334155').font('Helvetica-Bold').text(r.gstin || r.pan || '-', curX + 3, y + 9, { width: colWidths[4] - 5 });
+      // PAN
+      doc.fillColor('#334155').font('Helvetica-Bold').text(r.pan || '-', curX + 3, y, { width: colWidths[4] - 5 });
       curX += colWidths[4];
 
       // Contact
@@ -335,7 +332,6 @@ export const paymentReport = asyncHandler(async (req, res) => {
     .populate('client', 'clientName')
     .populate('invoice', 'invoiceNumber')
     .populate('recordedByLevel2', 'name')
-    .sort({ createdAt: -1 })
     .lean();
 
   const rowsObj = payments.map((p) => ({
@@ -343,11 +339,45 @@ export const paymentReport = asyncHandler(async (req, res) => {
     client: p.client?.clientName || '',
     invoice: p.invoice?.invoiceNumber || '',
     amount: p.amount ?? '',
-    received: p.paymentReceived ? 'Yes' : 'No',
+    received: p.paymentReceived ? 'Success' : 'Pending',
     receivedAt: p.receivedAt ? new Date(p.receivedAt).toISOString() : '',
     recordedBy: p.recordedByLevel2?.name || '',
     remarks: p.remarks || '',
   }));
+
+  // Fetch invoices to calculate Due rows
+  const invoices = await Invoice.find(filter).populate('client', 'clientName').lean();
+  const allPaymentsForInvoices = await Payment.find({ 
+    invoice: { $in: invoices.map(i => i._id) }, 
+    paymentReceived: true 
+  }).lean();
+
+  const paymentsByInvoice = {};
+  allPaymentsForInvoices.forEach(p => {
+    if (!p.invoice) return;
+    const iid = p.invoice.toString();
+    paymentsByInvoice[iid] = (paymentsByInvoice[iid] || 0) + (p.amount || 0);
+  });
+
+  invoices.forEach(inv => {
+    const paid = paymentsByInvoice[inv._id.toString()] || 0;
+    const due = Math.max(0, (inv.amount || 0) - paid);
+    if (due > 0) {
+      rowsObj.push({
+        date: inv.generatedAt ? new Date(inv.generatedAt).toISOString() : (inv.createdAt ? new Date(inv.createdAt).toISOString() : ''),
+        client: inv.client?.clientName || '',
+        invoice: inv.invoiceNumber || '',
+        amount: due,
+        received: 'Due',
+        receivedAt: '',
+        recordedBy: '',
+        remarks: 'Outstanding Balance',
+      });
+    }
+  });
+
+  // Sort all rows descending by date
+  rowsObj.sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const format = req.query.format || 'json';
   if (format === 'xlsx') {
@@ -355,11 +385,11 @@ export const paymentReport = asyncHandler(async (req, res) => {
       title: 'Payments',
       filename: 'payments',
       columns: [
-        { header: 'Created Date', key: 'date', width: 24 },
+        { header: 'Date', key: 'date', width: 24 },
         { header: 'Client Name', key: 'client', width: 24 },
         { header: 'Invoice', key: 'invoice', width: 18 },
         { header: 'Amount', key: 'amount', width: 14 },
-        { header: 'Received', key: 'received', width: 10 },
+        { header: 'Status', key: 'received', width: 10 },
         { header: 'Received At', key: 'receivedAt', width: 24 },
         { header: 'Recorded By', key: 'recordedBy', width: 20 },
         { header: 'Remarks', key: 'remarks', width: 30 },
@@ -391,13 +421,13 @@ export const paymentReport = asyncHandler(async (req, res) => {
     };
 
     const drawTableHeader = (y) => {
-      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#94a3b8');
+      doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#64748b');
       let curX = startX;
       headers.forEach((h, i) => {
         doc.text(h, curX + 3, y, { width: colWidths[i] - 5 });
         curX += colWidths[i];
       });
-      doc.moveTo(startX, y + 12).lineTo(startX + tableWidth, y + 12).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
+      doc.moveTo(startX, y + 12).lineTo(startX + tableWidth, y + 12).strokeColor('#cbd5e1').lineWidth(1).stroke();
       return y + 20;
     };
 
@@ -413,7 +443,8 @@ export const paymentReport = asyncHandler(async (req, res) => {
     let y = drawTableHeader(doc.y);
 
     doc.fontSize(7.5).fillColor('#334155');
-    for (const r of rowsObj) {
+    for (let i = 0; i < rowsObj.length; i++) {
+      const r = rowsObj[i];
       // Calculate max height
       const h1 = doc.heightOfString(r.client, { width: colWidths[1] - 5, font: 'Helvetica-Bold' });
       const h2 = doc.heightOfString(r.recordedBy, { width: colWidths[6] - 5 });
@@ -426,40 +457,47 @@ export const paymentReport = asyncHandler(async (req, res) => {
         y = drawTableHeader(doc.y);
       }
 
+      // Alternating row background
+      if (i % 2 === 0) {
+        doc.save();
+        doc.rect(startX, y - 5, tableWidth, maxRowHeight + 15).fill('#f8fafc');
+        doc.restore();
+      }
+
       let curX = startX;
 
       // Date
-      doc.font('Helvetica').text(formatDate(r.date), curX + 3, y, { width: colWidths[0] - 5 }); curX += colWidths[0];
+      doc.font('Helvetica').fillColor('#475569').text(formatDate(r.date), curX + 3, y + 2, { width: colWidths[0] - 5 }); curX += colWidths[0];
 
       // Client (Bold)
-      doc.font('Helvetica-Bold').text(r.client, curX + 3, y, { width: colWidths[1] - 5 }); curX += colWidths[1];
+      doc.font('Helvetica-Bold').fillColor('#1e293b').text(r.client, curX + 3, y + 2, { width: colWidths[1] - 5 }); curX += colWidths[1];
 
       // Invoice
-      doc.font('Helvetica').text(r.invoice || '-', curX + 3, y, { width: colWidths[2] - 5 }); curX += colWidths[2];
+      doc.font('Helvetica').fillColor('#64748b').text(r.invoice || '-', curX + 3, y + 2, { width: colWidths[2] - 5 }); curX += colWidths[2];
 
       // Amount
-      doc.font('Helvetica-Bold').text(formatNum(r.amount), curX + 3, y, { width: colWidths[3] - 5 }); curX += colWidths[3];
+      doc.font('Helvetica-Bold').fillColor('#1e293b').text(formatNum(r.amount), curX + 3, y + 2, { width: colWidths[3] - 5 }); curX += colWidths[3];
 
       // Status Badge
-      const isReceived = r.received === 'Yes';
-      const badgeColor = isReceived ? '#15803d' : '#b91c1c';
-      const badgeBg = isReceived ? '#dcfce7' : '#fee2e2';
-      const statusText = isReceived ? 'Success' : 'Pending';
+      const isReceived = r.received === 'Success';
+      const isDue = r.received === 'Due';
+      const badgeColor = isReceived ? '#15803d' : (isDue ? '#b91c1c' : '#b45309');
+      const badgeBg = isReceived ? '#dcfce7' : (isDue ? '#fee2e2' : '#fef3c7');
+      const statusText = r.received;
 
       doc.save();
-      doc.roundedRect(curX + 5, y, 40, 10, 2).fill(badgeBg);
-      doc.fillColor(badgeColor).fontSize(6.5).font('Helvetica-Bold').text(statusText, curX + 5, y + 2, { width: 40, align: 'center' });
+      doc.roundedRect(curX + 5, y, 46, 12, 3).fill(badgeBg);
+      doc.fillColor(badgeColor).fontSize(7).font('Helvetica-Bold').text(statusText, curX + 5, y + 3, { width: 46, align: 'center' });
       doc.restore();
       curX += colWidths[4];
 
       // Received At
-      doc.font('Helvetica').fillColor('#64748b').text(formatDate(r.receivedAt), curX + 3, y, { width: colWidths[5] - 5 }); curX += colWidths[5];
+      doc.font('Helvetica').fillColor('#64748b').text(formatDate(r.receivedAt), curX + 3, y + 2, { width: colWidths[5] - 5 }); curX += colWidths[5];
 
-      // Recorded By
-      doc.fillColor('#334155').text(r.recordedBy, curX + 3, y, { width: colWidths[6] - 5 }); curX += colWidths[6];
+      doc.fillColor('#334155').text(r.recordedBy || '-', curX + 3, y + 2, { width: colWidths[6] - 5 }); curX += colWidths[6];
 
       y += maxRowHeight + 15;
-      doc.moveTo(startX, y - 5).lineTo(startX + tableWidth, y - 5).strokeColor('#f8fafc').lineWidth(0.5).stroke();
+      doc.moveTo(startX, y - 5).lineTo(startX + tableWidth, y - 5).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
     }
 
     drawFooter();

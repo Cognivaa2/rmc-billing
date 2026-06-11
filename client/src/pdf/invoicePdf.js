@@ -26,10 +26,10 @@ export function buildInvoiceDoc({ invoice, client, dispatch, grade, companySetti
     invoice?.order?.approvedByLevel2 ||
     dispatch?.order?.saleAuthorizedByLevel2 ||
     dispatch?.order?.approvedByLevel2;
-  const dispatchApprovedBy = l2User?.name ? getInitials(l2User.name) : '';
-  const challanGeneratedBy = invoice?.generatedByLevel4?.name
-    ? getInitials(invoice.generatedByLevel4.name)
-    : (dispatch?.filledByLevel4?.name ? getInitials(dispatch.filledByLevel4.name) : '');
+  const dispatchApprovedBy = l2User?.customId || (l2User?.name ? getInitials(l2User.name) : '');
+  
+  const l4User = invoice?.generatedByLevel4 || dispatch?.filledByLevel4;
+  const challanGeneratedBy = l4User?.customId || (l4User?.name ? getInitials(l4User.name) : '');
   const invoiceDate = new Date(invoice.generatedAt || Date.now()).toLocaleDateString('en-IN');
   const dispatchDT = dispatch?.dispatchDateTime
     ? new Date(dispatch.dispatchDateTime).toLocaleString('en-IN')
@@ -119,8 +119,17 @@ export function buildInvoiceDoc({ invoice, client, dispatch, grade, companySetti
                         ],
                         [
                           { text: '1', alignment: 'center', margin: [0, 5, 0, 150] },
-                          { text: grade?.gradeCode || 'Ready Mix Concrete', margin: [0, 5, 0, 150] },
-                          { text: '38245010', alignment: 'center', margin: [0, 5, 0, 150] },
+                          { 
+                            stack: [
+                              { text: grade?.gradeCode || invoice?.gradeLabel || 'Ready Mix Concrete', bold: true },
+                              ...(grade?.description ? [
+                                { canvas: [{ type: 'line', x1: 0, y1: 2, x2: 120, y2: 2, lineWidth: 0.5, lineColor: '#ccc' }], margin: [0, 2, 0, 4] },
+                                { text: grade.description, fontSize: 8, color: '#444' }
+                              ] : [])
+                            ],
+                            margin: [0, 5, 0, 150] 
+                          },
+                          { text: grade?.hsnCode || '38245010', alignment: 'center', margin: [0, 5, 0, 150] },
                           { text: 'Cum', alignment: 'center', margin: [0, 5, 0, 150] },
                           { text: quantity.toFixed(2), alignment: 'center', margin: [0, 5, 0, 150] },
                           { text: showRate ? rate.toFixed(2) : '-', alignment: 'center', margin: [0, 5, 0, 150] },

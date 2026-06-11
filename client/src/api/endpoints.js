@@ -14,6 +14,7 @@ export const users = {
   }),
   create: (data) => api.post('/users', data).then((r) => r.data.user),
   update: (id, data) => api.patch(`/users/${id}`, data).then((r) => r.data.user),
+  delete: (id) => api.delete(`/users/${id}`).then((r) => r.data),
 };
 
 export const clients = {
@@ -64,7 +65,10 @@ export const dispatches = {
 
 
 export const invoices = {
-  list: (params) => api.get('/invoices', { params }).then((r) => r.data.invoices),
+  list: (params) => api.get('/invoices', { params }).then((r) => {
+    if (params && params.page !== undefined) return r.data;
+    return r.data.invoices;
+  }),
   get: (id) => api.get(`/invoices/${id}`).then((r) => r.data.invoice),
   create: (data) => api.post('/invoices', data).then((r) => r.data.invoice),
   createFromOrder: (data) => api.post('/invoices/from-order', data).then((r) => r.data.invoice),

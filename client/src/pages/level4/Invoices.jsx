@@ -12,8 +12,17 @@ function newIdempotencyKey() {
 
 export default function L4Invoices() {
   const qc = useQueryClient();
+  const [page, setPage] = useState(1);
 
-  const { data: invoicesList = [] } = useQuery({ queryKey: ['invoices'], queryFn: () => invoices.list() });
+  const { data: invoicesData } = useQuery({ 
+    queryKey: ['invoices', page], 
+    queryFn: () => invoices.list({ page, limit: 10 }),
+    placeholderData: (prev) => prev,
+  });
+  
+  const invoicesList = invoicesData?.invoices || [];
+  const totalPages = invoicesData?.totalPages || 1;
+
   const { data: ready = [] } = useQuery({
     queryKey: ['dispatches', 'ready_for_invoice'],
     queryFn: async () => {
@@ -73,7 +82,7 @@ export default function L4Invoices() {
         subtitle="Manage and generate delivery challans and invoices."
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+      <div className="flex flex-col gap-8">
         {/* Ready to invoice */}
         <div className="card flex flex-col">
           <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
@@ -149,6 +158,30 @@ export default function L4Invoices() {
                 )}
               </tbody>
             </table>
+          </div>
+          
+          {/* Pagination Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 gap-4">
+            <div className="text-xs text-slate-500">
+              Page <span className="font-medium text-slate-700">{page}</span> of{' '}
+              <span className="font-medium text-slate-700">{totalPages}</span>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                className="btn-secondary flex-1 sm:flex-none py-2 px-4 text-xs disabled:opacity-50"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </button>
+              <button
+                className="btn-secondary flex-1 sm:flex-none py-2 px-4 text-xs disabled:opacity-50"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>

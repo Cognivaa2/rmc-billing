@@ -203,7 +203,7 @@ export const createInvoiceFromOrder = asyncHandler(async (req, res) => {
 });
 
 export const listInvoices = asyncHandler(async (req, res) => {
-  const { client, from, to } = req.query;
+  const { client, from, to, page, limit = 10 } = req.query;
   const filter = {};
   if (client) filter.client = client;
   if (from || to) {
@@ -211,19 +211,35 @@ export const listInvoices = asyncHandler(async (req, res) => {
     if (from) filter.generatedAt.$gte = new Date(from);
     if (to) filter.generatedAt.$lte = new Date(to);
   }
-  const invoices = await Invoice.find(filter)
+
+  const query = Invoice.find(filter)
     .populate('client', 'clientName')
     .populate('grade', 'gradeCode')
     .populate('dispatch', 'dispatchNumber vehicleNumber')
     .populate({
       path: 'order',
       populate: [
-        { path: 'approvedByLevel2', select: 'name' },
-        { path: 'saleAuthorizedByLevel2', select: 'name' }
+        { path: 'approvedByLevel2', select: 'name customId' },
+        { path: 'saleAuthorizedByLevel2', select: 'name customId' }
       ]
     })
-    .populate('generatedByLevel4', 'name')
+    .populate('generatedByLevel4', 'name customId')
     .sort({ generatedAt: -1 });
+
+  if (page) {
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await Invoice.countDocuments(filter);
+    const invoices = await query.skip(skip).limit(Number(limit));
+    return res.json({
+      invoices,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
+    });
+  }
+
+  const invoices = await query;
   res.json({ invoices });
 });
 
@@ -233,16 +249,26 @@ export const getInvoice = asyncHandler(async (req, res) => {
     .populate('grade')
     .populate({
       path: 'dispatch',
-      populate: { path: 'site' }
+      populate: [
+        { path: 'site' },
+        { path: 'filledByLevel4', select: 'name customId' },
+        { 
+          path: 'order', 
+          populate: [
+            { path: 'approvedByLevel2', select: 'name customId' },
+            { path: 'saleAuthorizedByLevel2', select: 'name customId' }
+          ]
+        }
+      ]
     })
     .populate({
       path: 'order',
       populate: [
-        { path: 'approvedByLevel2', select: 'name' },
-        { path: 'saleAuthorizedByLevel2', select: 'name' }
+        { path: 'approvedByLevel2', select: 'name customId' },
+        { path: 'saleAuthorizedByLevel2', select: 'name customId' }
       ]
     })
-    .populate('generatedByLevel4', 'name');
+    .populate('generatedByLevel4', 'name customId');
   if (!invoice) throw ApiError.notFound();
   res.json({ invoice });
 });
@@ -253,17 +279,27 @@ export const getInvoicePdf = asyncHandler(async (req, res) => {
     .populate('grade')
     .populate({
       path: 'dispatch',
-      populate: { path: 'site' }
+      populate: [
+        { path: 'site' },
+        { path: 'filledByLevel4', select: 'name customId' },
+        { 
+          path: 'order', 
+          populate: [
+            { path: 'approvedByLevel2', select: 'name customId' },
+            { path: 'saleAuthorizedByLevel2', select: 'name customId' }
+          ]
+        }
+      ]
     })
     .populate({
       path: 'order',
       populate: [
         { path: 'site' },
-        { path: 'approvedByLevel2', select: 'name' },
-        { path: 'saleAuthorizedByLevel2', select: 'name' }
+        { path: 'approvedByLevel2', select: 'name customId' },
+        { path: 'saleAuthorizedByLevel2', select: 'name customId' }
       ]
     })
-    .populate('generatedByLevel4', 'name');
+    .populate('generatedByLevel4', 'name customId');
 
   if (!invoice) throw ApiError.notFound('Invoice not found');
 
