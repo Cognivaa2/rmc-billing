@@ -113,7 +113,7 @@ async function start() {
   });
 
   httpServer.listen(env.port, () => {
-    logger.info(`RMC Billing API listening on :${env.port}`);
+    logger.info(`Merlo Billing API listening on :${env.port}`);
 
     // Self-ping to prevent Render from sleeping (triggers every 14 minutes)
     const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL;

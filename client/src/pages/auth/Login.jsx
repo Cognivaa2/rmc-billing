@@ -54,7 +54,7 @@ export default function Login() {
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 font-bold text-white">R</div>
           <div>
-            <div className="text-lg font-semibold">RMC Billing</div>
+            <div className="text-lg font-semibold">Merlo Billing</div>
             <div className="text-xs text-slate-500">Dispatch &amp; Invoice Portal</div>
           </div>
         </div>

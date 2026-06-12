@@ -13,9 +13,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       },
       manifest: {
-        name: 'RMC Billing',
+        name: 'Merlo Billing',
         short_name: 'RMC',
-        description: 'RMC Billing & Dispatch Management',
+        description: 'Merlo Billing & Dispatch Management',
         theme_color: '#2563eb',
         background_color: '#ffffff',
         display: 'standalone',
